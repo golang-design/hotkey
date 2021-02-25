@@ -1,0 +1,48 @@
+# Copyright 2021 The golang.design Initiative Authors.
+# All rights reserved. Use of this source code is governed
+# by a MIT license that can be found in the LICENSE file.
+#
+# Written by Changkun Ou <changkun.de>
+
+name: hotkey
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  platform_test:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+
+    - name: install xvfb libx11-dev
+      run: |
+        sudo apt update
+        sudo apt install -y xvfb libx11-dev
+      if: ${{ runner.os == 'Linux' }}
+
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        stable: 'false'
+        go-version: '1.16.0'
+
+    - name: TestLinux
+      run: |
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        export DISPLAY=:99.0
+        sleep 5s
+        go test -v -covermode=atomic ./...
+      if: ${{ runner.os == 'Linux' }}
+
+    - name: TestOthers
+      run: |
+        go test -v -covermode=atomic ./...
