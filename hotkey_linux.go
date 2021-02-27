@@ -61,13 +61,13 @@ type Modifier uint32
 // All kinds of Modifiers
 // See /usr/include/X11/X.h
 const (
-	ModCtrl  = (1 << 2)
-	ModShift = (1 << 0)
-	Mod1     = (1 << 3)
-	Mod2     = (1 << 4)
-	Mod3     = (1 << 5)
-	Mod4     = (1 << 6)
-	Mod5     = (1 << 7)
+	ModCtrl  Modifier = (1 << 2)
+	ModShift Modifier = (1 << 0)
+	Mod1     Modifier = (1 << 3)
+	Mod2     Modifier = (1 << 4)
+	Mod3     Modifier = (1 << 5)
+	Mod4     Modifier = (1 << 6)
+	Mod5     Modifier = (1 << 7)
 )
 
 // Key represents a key.

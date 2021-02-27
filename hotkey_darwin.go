@@ -72,10 +72,10 @@ type Modifier uint32
 
 // All kinds of Modifiers
 const (
-	ModCtrl   = 0x1000
-	ModShift  = 0x200
-	ModOption = 0x800
-	ModCmd    = 0x100
+	ModCtrl   Modifier = 0x1000
+	ModShift  Modifier = 0x200
+	ModOption Modifier = 0x800
+	ModCmd    Modifier = 0x100
 )
 
 // Key represents a key.
