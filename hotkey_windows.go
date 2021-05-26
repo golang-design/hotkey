@@ -23,7 +23,7 @@ func (hk *Hotkey) register() error {
 	for _, m := range hk.mods {
 		mod = mod | uint8(m)
 	}
-	ok, err := win.RegisterHotKey(0, 1, uintptr(mod), uintptr(KeyS))
+	ok, err := win.RegisterHotKey(0, 1, uintptr(mod), uintptr(hk.key))
 	if !ok {
 		return err
 	}
