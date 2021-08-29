@@ -1,6 +1,6 @@
 module golang.design/x/hotkey
 
-go 1.16
+go 1.17
 
 require (
 	golang.design/x/mainthread v0.2.1

@@ -5,19 +5,19 @@
 // Written by Changkun Ou <changkun.de>
 
 //go:build darwin
-// +build darwin
 
 package hotkey
 
 /*
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Cocoa -framework Carbon
+#include <stdint.h>
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 
-extern void hotkeyCallback(unsigned long long handle);
+extern void hotkeyCallback(uintptr_t handle);
 
-int registerHotKey(int mod, int key, unsigned long long handle);
+int registerHotKey(int mod, int key, uintptr_t handle);
 void runApp();
 void stopApp();
 */
@@ -25,18 +25,17 @@ import "C"
 import (
 	"context"
 	"errors"
-
-	"golang.design/x/hotkey/internal/cgo"
+	"runtime/cgo"
 )
 
 // handle handles the hotkey event loop.
 func (hk *Hotkey) handle(ctx context.Context) {
-	// KNOWN ISSUE: This application never ends.
+	// Note: This call never returns.
 	C.runApp()
 }
 
 func (hk *Hotkey) register() error {
-	// KNOWN ISSUE: we use handle number as hotkey id in the C side.
+	// Note: we use handle number as hotkey id in the C side.
 	// A cgo handle could ran out of space, but since in hotkey purpose
 	// we won't have that much number of hotkeys. So this should be fine.
 
@@ -46,7 +45,7 @@ func (hk *Hotkey) register() error {
 		mod += m
 	}
 
-	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.ulonglong(h))
+	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h))
 	if ret == C.int(-1) {
 		return errors.New("register failed")
 	}
@@ -61,7 +60,7 @@ func (hk *Hotkey) unregister() {
 }
 
 //export hotkeyCallback
-func hotkeyCallback(h C.ulonglong) {
+func hotkeyCallback(h uintptr) {
 	ch := cgo.Handle(h).Value().(chan<- Event)
 	ch <- Event{}
 }

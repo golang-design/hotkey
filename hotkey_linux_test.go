@@ -5,7 +5,6 @@
 // Written by Changkun Ou <changkun.de>
 
 //go:build linux
-// +build linux
 
 package hotkey_test
 

@@ -5,7 +5,6 @@
 // Written by Changkun Ou <changkun.de>
 
 //go:build linux
-// +build linux
 
 #include <stdio.h>
 #include <X11/Xlib.h>
@@ -44,7 +43,12 @@ int waitHotkey(unsigned int mod, int key) {
 	// FIXME: handle registered hotkey properly.
 	// XSetErrorHandler(handleErrors);
 
-	Display* d = XOpenDisplay(0);
+	Display* d = NULL;
+	for (int i = 0; i < 42; i++) {
+		d = XOpenDisplay(0);
+		if (d == NULL) continue;
+		break;
+	}
 	if (d == NULL) {
 		return -1;
 	}

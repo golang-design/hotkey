@@ -5,23 +5,23 @@
 // Written by Changkun Ou <changkun.de>
 
 //go:build darwin
-// +build darwin
 
+#include <stdint.h>
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 
-extern void hotkeyCallback(unsigned long long handle);
+extern void hotkeyCallback(uintptr_t handle);
 
 static OSStatus
 eventHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData) {
 	EventHotKeyID k;
 	GetEventParameter(theEvent, kEventParamDirectObject, typeEventHotKeyID, NULL, sizeof(k), NULL, &k);
-	hotkeyCallback((unsigned long long)k.id); // use id as handle
+	hotkeyCallback((uintptr_t)k.id); // use id as handle
 	return noErr;
 }
 
 // registerHotkeyWithCallback registers a global system hotkey for callbacks.
-int registerHotKey(int mod, int key, unsigned long long handle) {
+int registerHotKey(int mod, int key, uintptr_t handle) {
 	EventTypeSpec eventType;
 	eventType.eventClass = kEventClassKeyboard;
 	eventType.eventKind = kEventHotKeyPressed;
