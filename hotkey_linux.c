@@ -11,11 +11,15 @@
 #include <X11/Xutil.h>
 
 int displayTest() {
-	Display* d = XOpenDisplay(0);
+	Display* d = NULL;
+	for (int i = 0; i < 42; i++) {
+		d = XOpenDisplay(0);
+		if (d == NULL) continue;
+		break;
+	}
 	if (d == NULL) {
 		return -1;
 	}
-	XCloseDisplay(d);
 	return 0;
 }
 

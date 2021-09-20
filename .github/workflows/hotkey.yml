@@ -48,6 +48,17 @@ jobs:
         stable: 'false'
         go-version: '1.17.x'
 
-    - name: Run Tests
+    - name: Run Tests with CGO_ENABLED=1
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS'}}
       run: |
-        go test -v -covermode=atomic ./...
+        CGO_ENABLED=1 go test -v -covermode=atomic .
+
+    - name: Run Tests with CGO_ENABLED=0
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS'}}
+      run: |
+        CGO_ENABLED=0 go test -v -covermode=atomic .
+
+    - name: Run Tests on Windows
+      if: ${{ runner.os == 'Windows'}}
+      run: |
+        go test -v -covermode=atomic .

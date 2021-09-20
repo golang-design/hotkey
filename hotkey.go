@@ -111,6 +111,7 @@ func newEventChan() (chan<- Event, <-chan Event) {
 			for len(q) > 0 {
 				select {
 				case out <- q[0]:
+					q[0] = Event{}
 					q = q[1:]
 				case e, ok := <-in:
 					if ok {
