@@ -25,5 +25,10 @@ func TestHotkey(t *testing.T) {
 		t.Fatalf("expect to fail when CGO_ENABLED=0")
 	}()
 
-	hotkey.Register([]hotkey.Modifier{}, hotkey.Key(0))
+	hk := hotkey.New([]hotkey.Modifier{}, hotkey.Key(0))
+	err := hk.Register()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hk.Unregister()
 }

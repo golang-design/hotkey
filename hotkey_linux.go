@@ -15,7 +15,11 @@ int displayTest();
 int waitHotkey(unsigned int mod, int key);
 */
 import "C"
-import "context"
+import (
+	"context"
+	"errors"
+	"sync"
+)
 
 const errmsg = `Failed to initialize the X11 display, and the clipboard package
 will not work properly. Install the following dependency may help:
@@ -36,17 +40,46 @@ func init() {
 	}
 }
 
+type platformHotkey struct {
+	mu         sync.Mutex
+	registered bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	canceled   chan struct{}
+}
+
 // Nothing needs to do for register
-func (hk *Hotkey) register() error { return nil }
+func (hk *Hotkey) register() error {
+	hk.mu.Lock()
+	if hk.registered {
+		hk.mu.Unlock()
+		return errors.New("hotkey already registered.")
+	}
+	hk.registered = true
+	hk.ctx, hk.cancel = context.WithCancel(context.Background())
+	hk.canceled = make(chan struct{})
+	hk.mu.Unlock()
+
+	go hk.handle()
+	return nil
+}
 
 // Nothing needs to do for unregister
-func (hk *Hotkey) unregister() {}
+func (hk *Hotkey) unregister() error {
+	hk.mu.Lock()
+	defer hk.mu.Unlock()
+	if !hk.registered {
+		return errors.New("hotkey is not registered.")
+	}
+	hk.cancel()
+	hk.registered = false
+	<-hk.canceled
+	return nil
+}
 
 // handle registers an application global hotkey to the system,
 // and returns a channel that will signal if the hotkey is triggered.
-//
-// No customization for the hotkey, the hotkey is always: Ctrl+Mod4+s
-func (hk *Hotkey) handle(ctx context.Context) {
+func (hk *Hotkey) handle() {
 	// KNOWN ISSUE: if a hotkey is grabbed by others, C side will crash the program
 
 	var mod Modifier
@@ -55,7 +88,8 @@ func (hk *Hotkey) handle(ctx context.Context) {
 	}
 	for {
 		select {
-		case <-ctx.Done():
+		case <-hk.ctx.Done():
+			close(hk.canceled)
 			return
 		default:
 			ret := C.waitHotkey(C.uint(mod), C.int(hk.key))
