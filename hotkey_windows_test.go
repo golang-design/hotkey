@@ -26,19 +26,16 @@ func TestHotkey(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), tt)
 	defer cancel()
 
-	hk, err := hotkey.Register([]hotkey.Modifier{
-		hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
-	if err != nil {
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
+	if err := hk.Register(); err != nil {
 		t.Errorf("failed to register hotkey: %v", err)
 		return
 	}
-
-	trigger := hk.Listen(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-trigger:
+		case <-hk.Listen():
 			fmt.Println("triggered")
 		}
 	}

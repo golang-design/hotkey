@@ -24,9 +24,9 @@ var (
 
 // RegisterHotKey defines a system-wide hot key.
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
-func RegisterHotKey(hwnd uintptr, id int, mod uintptr, k uintptr) (bool, error) {
+func RegisterHotKey(hwnd, id uintptr, mod uintptr, k uintptr) (bool, error) {
 	ret, _, err := registerHotkey.Call(
-		hwnd, uintptr(id), mod, k,
+		hwnd, id, mod, k,
 	)
 	return ret != 0, err
 }
@@ -34,8 +34,8 @@ func RegisterHotKey(hwnd uintptr, id int, mod uintptr, k uintptr) (bool, error) 
 // UnregisterHotKey frees a hot key previously registered by the calling
 // thread.
 // https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
-func UnregisterHotKey(hwnd uintptr, id int) (bool, error) {
-	ret, _, err := unregisterHotkey.Call(hwnd, uintptr(id))
+func UnregisterHotKey(hwnd, id uintptr) (bool, error) {
+	ret, _, err := unregisterHotkey.Call(hwnd, id)
 	return ret != 0, err
 }
 

@@ -10,35 +10,74 @@ package hotkey
 
 import (
 	"context"
+	"errors"
+	"runtime"
+	"sync"
+	"sync/atomic"
 
 	"golang.design/x/hotkey/internal/win"
 )
+
+type platformHotkey struct {
+	mu         sync.Mutex
+	hotkeyId   uint64
+	registered bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	canceled   chan struct{}
+}
+
+var hotkeyId uint64 // atomic
 
 // register registers a system hotkey. It returns an error if
 // the registration is failed. This could be that the hotkey is
 // conflict with other hotkeys.
 func (hk *Hotkey) register() error {
+	hk.mu.Lock()
+	if hk.registered {
+		hk.mu.Unlock()
+		return errors.New("hotkey already registered.")
+	}
 	mod := uint8(0)
 	for _, m := range hk.mods {
 		mod = mod | uint8(m)
 	}
-	ok, err := win.RegisterHotKey(0, 1, uintptr(mod), uintptr(hk.key))
+
+	hk.hotkeyId = atomic.AddUint64(&hotkeyId, 1)
+	ok, err := win.RegisterHotKey(0, uintptr(hk.hotkeyId), uintptr(mod), uintptr(hk.key))
 	if !ok {
 		return err
 	}
+	hk.registered = true
+	hk.ctx, hk.cancel = context.WithCancel(context.Background())
+	hk.canceled = make(chan struct{})
+	hk.mu.Unlock()
+
+	go hk.handle()
 	return nil
 }
 
 // unregister deregisteres a system hotkey.
-func (hk *Hotkey) unregister() {
-	// FIXME: unregister hotkey
+func (hk *Hotkey) unregister() error {
+	hk.mu.Lock()
+	defer hk.mu.Unlock()
+	if !hk.registered {
+		return errors.New("hotkey is not registered")
+	}
+	hk.cancel()
+	<-hk.canceled
+	hk.registered = false
+	return nil
 }
 
 // msgHotkey represents hotkey message
 const msgHotkey uint32 = 0x0312
 
 // handle handles the hotkey event loop.
-func (hk *Hotkey) handle(ctx context.Context) {
+func (hk *Hotkey) handle() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	msg := win.MSG{}
 	// KNOWN ISSUE: This message loop need to press an additional
 	// hotkey to eventually return if ctx.Done() is ready.
@@ -46,7 +85,9 @@ func (hk *Hotkey) handle(ctx context.Context) {
 		switch msg.Message {
 		case msgHotkey:
 			select {
-			case <-ctx.Done():
+			case <-hk.ctx.Done():
+				win.UnregisterHotKey(0, uintptr(hk.hotkeyId))
+				close(hk.canceled)
 				return
 			default:
 				hk.in <- Event{}
