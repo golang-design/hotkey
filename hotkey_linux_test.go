@@ -21,24 +21,20 @@ import (
 // This is a test to run and for manually testing, registered combination:
 // Ctrl+Alt+A (Ctrl+Mod2+Mod4+A on Linux)
 func TestHotkey(t *testing.T) {
-	tt := time.Second * 5
-
-	ctx, cancel := context.WithTimeout(context.Background(), tt)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	hk, err := hotkey.Register([]hotkey.Modifier{
+	hk := hotkey.New([]hotkey.Modifier{
 		hotkey.ModCtrl, hotkey.Mod2, hotkey.Mod4}, hotkey.KeyA)
-	if err != nil {
+	if err := hk.Register(); err != nil {
 		t.Errorf("failed to register hotkey: %v", err)
 		return
 	}
-
-	trigger := hk.Listen(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-trigger:
+		case <-hk.Listen():
 			fmt.Println("triggered")
 		}
 	}

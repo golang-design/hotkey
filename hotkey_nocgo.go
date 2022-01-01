@@ -10,6 +10,8 @@ package hotkey
 
 import "context"
 
+type platformHotkey struct{}
+
 // Modifier represents a modifier
 type Modifier uint32
 
@@ -21,7 +23,7 @@ func (hk *Hotkey) register() error {
 }
 
 // unregister deregisteres a system hotkey.
-func (hk *Hotkey) unregister() {
+func (hk *Hotkey) unregister() error {
 	panic("hotkey: cannot use when CGO_ENABLED=0")
 }
 
