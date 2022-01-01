@@ -19,7 +19,7 @@ import "context"
 
 const errmsg = `Failed to initialize the X11 display, and the clipboard package
 will not work properly. Install the following dependency may help:
- 
+
 	apt install -y libx11-dev
 If the clipboard package is in an environment without a frame buffer,
 such as a cloud server, it may also be necessary to install xvfb:

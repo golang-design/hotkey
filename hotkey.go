@@ -12,7 +12,7 @@
 // restriction, hotkey events must be handled on the main thread.
 //
 // Therefore, in order to use this package properly, here is a complete
-// example that corporates the golang.design/x/mainthread package:
+// example that corporates the golang.design/x/hotkey/mainthread package:
 //
 // 	package main
 //
@@ -20,45 +20,39 @@
 // 		"context"
 //
 // 		"golang.design/x/hotkey"
-// 		"golang.design/x/mainthread"
+// 		"golang.design/x/hotkey/mainthread"
 // 	)
 //
 // 	// initialize mainthread facility so that hotkey can be
 // 	// properly registered to the system and handled by the
 // 	// application.
-// 	func main() { mainthread.Init(fn) }
+// 	func main() { mainthread.Run(fn) }
 // 	func fn() { // Use fn as the actual main function.
 // 		var (
-// 			mods = []hotkey.Modifier{hotkey.ModCtrl}
+// 			mods = []hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}
 // 			k    = hotkey.KeyS
 // 		)
 //
 // 		// Register a desired hotkey.
-// 		hk, err := hotkey.Register(mods, k)
-// 		if err != nil {
+// 		hk := hotkey.New(mods, k)
+// 		if err := hk.Register(); err != nil {
 // 			panic("hotkey registration failed")
 // 		}
 //
 // 		// Start listen hotkey event whenever you feel it is ready.
-// 		triggered := hk.Listen(context.Background())
-// 		for range triggered {
-// 			println("hotkey ctrl+s is triggered")
+// 		for range hk.Listen() {
+// 			println("hotkey ctrl+shift+s is triggered")
 // 		}
 // 	}
 package hotkey
-
-import (
-	"context"
-	"runtime"
-
-	"golang.design/x/mainthread"
-)
 
 // Event represents a hotkey event
 type Event struct{}
 
 // Hotkey is a combination of modifiers and key to trigger an event
 type Hotkey struct {
+	platformHotkey
+
 	mods []Modifier
 	key  Key
 
@@ -66,31 +60,35 @@ type Hotkey struct {
 	out <-chan Event
 }
 
+func New(mods []Modifier, key Key) *Hotkey {
+	in, out := newEventChan()
+	return &Hotkey{mods: mods, key: key, in: in, out: out}
+}
+
 // Register registers a combination of hotkeys. If the hotkey has
 // registered. This function will invalidates the old registration
 // and overwrites its callback.
-func Register(mods []Modifier, key Key) (*Hotkey, error) {
-	in, out := newEventChan()
-	hk := &Hotkey{mods, key, in, out}
-
-	var err error
-	mainthread.Call(func() { err = hk.register() })
-	if err != nil {
-		return nil, err
-	}
-
-	runtime.SetFinalizer(hk, func(hk *Hotkey) {
-		hk.unregister()
-	})
-
-	return hk, nil
+func (hk *Hotkey) Register() error {
+	return hk.register()
 }
 
 // Listen handles a hotkey event and triggers a call to fn.
 // The hotkey listen hook terminates when the context is canceled.
-func (hk *Hotkey) Listen(ctx context.Context) <-chan Event {
-	mainthread.Go(func() { hk.handle(ctx) })
-	return hk.out
+func (hk *Hotkey) Listen() <-chan Event { return hk.out }
+
+// Unregister unregisters the hotkey.
+func (hk *Hotkey) Unregister() error {
+	err := hk.unregister()
+	if err != nil {
+		return err
+	}
+
+	// Setup a new event channel.
+	close(hk.in)
+	in, out := newEventChan()
+	hk.in = in
+	hk.out = out
+	return nil
 }
 
 // newEventChan returns a sender and a receiver of a buffered channel

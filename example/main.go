@@ -5,26 +5,43 @@
 package main
 
 import (
-	"context"
+	"time"
 
 	"golang.design/x/hotkey"
-	"golang.design/x/mainthread"
+	"golang.design/x/hotkey/mainthread"
 )
 
-func main() { mainthread.Init(fn) }
+func main() { mainthread.Run(fn) }
 func fn() {
-	var (
-		mods = []hotkey.Modifier{hotkey.ModCtrl}
-		k    = hotkey.KeyS
-	)
+	hk1 := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl}, hotkey.KeyS)
+	go func() {
+		println("register")
+		if err := hk1.Register(); err != nil {
+			panic(err)
+		}
+		for range hk1.Listen() {
+			println("hotkey ctrl+s is triggered")
+		}
+	}()
 
-	hk, err := hotkey.Register(mods, k)
-	if err != nil {
-		panic("hotkey registration failed")
-	}
+	<-time.After(5 * time.Second)
+	hk1.Unregister()
+	println("unregistered")
 
-	triggered := hk.Listen(context.Background())
-	for range triggered {
-		println("hotkey ctrl+s is triggered")
-	}
+	<-time.After(5 * time.Second)
+	go func() {
+		println("register again")
+		if err := hk1.Register(); err != nil {
+			panic(err)
+		}
+		for range hk1.Listen() {
+			println("hotkey ctrl+s is triggered")
+		}
+	}()
+
+	<-time.After(5 * time.Second)
+	hk1.Unregister()
+	println("unregistered again")
+
+	println("done")
 }

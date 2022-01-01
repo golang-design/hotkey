@@ -21,7 +21,7 @@ eventHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData)
 }
 
 // registerHotkeyWithCallback registers a global system hotkey for callbacks.
-int registerHotKey(int mod, int key, uintptr_t handle) {
+int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref) {
 	EventTypeSpec eventType;
 	eventType.eventClass = kEventClassKeyboard;
 	eventType.eventKind = kEventHotKeyPressed;
@@ -30,9 +30,8 @@ int registerHotKey(int mod, int key, uintptr_t handle) {
 	);
 
 	EventHotKeyID hkid = {.id = handle};
-	EventHotKeyRef ref;
 	OSStatus s = RegisterEventHotKey(
-		key, mod, hkid, GetApplicationEventTarget(), 0, &ref
+		key, mod, hkid, GetApplicationEventTarget(), 0, ref
 	);
 	if (s != noErr) {
 		return -1;
@@ -40,17 +39,10 @@ int registerHotKey(int mod, int key, uintptr_t handle) {
 	return 0;
 }
 
-
-// The following three lines of code must run on the main thread.
-// It must handle it using golang.design/x/mainthread.
-//
-// inspired from here: https://github.com/cehoffman/dotfiles/blob/4be8e893517e970d40746a9bdc67fe5832dd1c33/os/mac/iTerm2HotKey.m
-void runApp() {
-	[NSApplication sharedApplication];
-	[NSApp disableRelaunchOnLogin];
-	[NSApp run];
-}
-
-void stopApp() {
-	[NSApp stop: nil];
+int unregisterHotKey(EventHotKeyRef ref) {
+	OSStatus s = UnregisterEventHotKey(ref);
+	if (s != noErr) {
+		return -1;
+	}
+	return 0;
 }

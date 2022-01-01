@@ -16,25 +16,32 @@ package hotkey
 #import <Carbon/Carbon.h>
 
 extern void hotkeyCallback(uintptr_t handle);
-
-int registerHotKey(int mod, int key, uintptr_t handle);
-void runApp();
-void stopApp();
+int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref);
+int unregisterHotKey(EventHotKeyRef ref);
 */
 import "C"
 import (
-	"context"
 	"errors"
 	"runtime/cgo"
+	"sync"
+
+	"golang.design/x/hotkey/mainthread"
 )
 
-// handle handles the hotkey event loop.
-func (hk *Hotkey) handle(ctx context.Context) {
-	// Note: This call never returns.
-	C.runApp()
+// Hotkey is a combination of modifiers and key to trigger an event
+type platformHotkey struct {
+	mu         sync.Mutex
+	registered bool
+	hkref      C.EventHotKeyRef
 }
 
 func (hk *Hotkey) register() error {
+	hk.mu.Lock()
+	defer hk.mu.Unlock()
+	if hk.registered {
+		return errors.New("hotkey already registered")
+	}
+
 	// Note: we use handle number as hotkey id in the C side.
 	// A cgo handle could ran out of space, but since in hotkey purpose
 	// we won't have that much number of hotkeys. So this should be fine.
@@ -45,18 +52,31 @@ func (hk *Hotkey) register() error {
 		mod += m
 	}
 
-	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h))
+	var ret C.int
+	mainthread.Call(func() {
+		ret = C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
+	})
 	if ret == C.int(-1) {
-		return errors.New("register failed")
+		return errors.New("failed to register the hotkey")
 	}
+
+	hk.registered = true
 	return nil
 }
 
-func (hk *Hotkey) unregister() {
-	// TODO: unregister registered hotkeys.
+func (hk *Hotkey) unregister() error {
+	hk.mu.Lock()
+	defer hk.mu.Unlock()
+	if !hk.registered {
+		return errors.New("hotkey is not registered")
+	}
 
-	// KNOWN ISSUE: This call seems does not terminate the app.
-	C.stopApp()
+	ret := C.unregisterHotKey(hk.hkref)
+	if ret == C.int(-1) {
+		return errors.New("failed to unregister the current hotkey")
+	}
+	hk.registered = false
+	return nil
 }
 
 //export hotkeyCallback
