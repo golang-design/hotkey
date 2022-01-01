@@ -27,41 +27,38 @@ func TestHotkey(t *testing.T) {
 	done := make(chan struct{}, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), tt)
 	go func() {
-		hk, err := hotkey.Register([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
-		if err != nil {
+		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
+		if err := hk.Register(); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}
-
-		trigger := hk.Listen(ctx)
 		for {
 			select {
 			case <-ctx.Done():
 				cancel()
 				done <- struct{}{}
 				return
-			case <-trigger:
-				fmt.Println("triggered 1")
+			case <-hk.Listen():
+				fmt.Println("triggered ctrl+shift+s")
 			}
 		}
 	}()
 
 	go func() {
-		hk, err := hotkey.Register([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModOption}, hotkey.KeyS)
-		if err != nil {
+		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModOption}, hotkey.KeyS)
+		if err := hk.Register(); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}
 
-		trigger := hk.Listen(ctx)
 		for {
 			select {
 			case <-ctx.Done():
 				cancel()
 				done <- struct{}{}
 				return
-			case <-trigger:
-				fmt.Println("triggered 2")
+			case <-hk.Listen():
+				fmt.Println("triggered ctrl+option+s")
 			}
 		}
 	}()

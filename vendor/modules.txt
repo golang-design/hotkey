@@ -1,5 +1,0 @@
-# golang.design/x/mainthread v0.3.0
-## explicit; go 1.16
-golang.design/x/mainthread
-# golang.org/x/sys v0.0.0-20210122093101-04d7465088b8
-## explicit; go 1.12

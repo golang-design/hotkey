@@ -21,7 +21,7 @@ keys is not supported at the moment. Furthermore, because of OS
 restriction, hotkey events must be handled on the main thread.
 
 Therefore, in order to use this package properly, here is a complete
-example that corporates the [mainthread](https://golang.design/s/mainthread)
+example that corporates the mainthread:
 package:
 
 ```go
@@ -31,29 +31,28 @@ import (
 	"context"
 
 	"golang.design/x/hotkey"
-	"golang.design/x/mainthread"
+	"golang.design/x/hotkey/mainthread"
 )
 
 // initialize mainthread facility so that hotkey can be
 // properly registered to the system and handled by the
 // application.
-func main() { mainthread.Init(fn) }
+func main() { mainthread.Run(fn) }
 func fn() { // Use fn as the actual main function.
 	var (
-		mods = []hotkey.Modifier{hotkey.ModCtrl}
+		mods = []hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}
 		k    = hotkey.KeyS
 	)
 
 	// Register a desired hotkey.
-	hk, err := hotkey.Register(mods, k)
-	if err != nil {
+	hk := hotkey.New(mods, k)
+	if err := hk.Register() err != nil {
 		panic("hotkey registration failed")
 	}
 
 	// Start listen hotkey event whenever you feel it is ready.
-	triggered := hk.Listen(context.Background())
-	for range triggered {
-		println("hotkey ctrl+s is triggered")
+	for range hk.Listen() {
+		println("hotkey ctrl+shift+s is triggered")
 	}
 }
 ```
