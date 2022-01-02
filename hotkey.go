@@ -5,45 +5,19 @@
 // Written by Changkun Ou <changkun.de>
 
 // Package hotkey provides the basic facility to register a system-level
-// hotkey so that the application can be notified if a user triggers the
-// desired hotkey. By definition, a hotkey is a combination of modifiers
-// and a single key, and thus register a hotkey that contains multiple
-// keys is not supported at the moment. Furthermore, because of OS
-// restriction, hotkey events must be handled on the main thread.
+// global hotkey shortcut so that an application can be notified if a user
+// triggers the desired hotkey. A hotkey must be a combination of modifiers
+// and a single key.
 //
-// Therefore, in order to use this package properly, here is a complete
-// example that corporates the golang.design/x/hotkey/mainthread package:
-//
-// 	package main
-//
-// 	import (
-// 		"context"
-//
-// 		"golang.design/x/hotkey"
-// 		"golang.design/x/hotkey/mainthread"
-// 	)
-//
-// 	// initialize mainthread facility so that hotkey can be
-// 	// properly registered to the system and handled by the
-// 	// application.
-// 	func main() { mainthread.Run(fn) }
-// 	func fn() { // Use fn as the actual main function.
-// 		var (
-// 			mods = []hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}
-// 			k    = hotkey.KeyS
-// 		)
-//
-// 		// Register a desired hotkey.
-// 		hk := hotkey.New(mods, k)
-// 		if err := hk.Register(); err != nil {
-// 			panic("hotkey registration failed")
-// 		}
-//
-// 		// Start listen hotkey event whenever you feel it is ready.
-// 		for range hk.Listen() {
-// 			println("hotkey ctrl+shift+s is triggered")
-// 		}
-// 	}
+// Note a platform specific detail on "macOS" due to the OS restriction (other
+// platforms does not have this restriction), hotkey events must be handled
+// on the "main thread". Therefore, in order to use this package properly,
+// one must call the "(*Hotkey).Register" method on the main thread, and an
+// OS app main event loop must be established. For self-contained applications,
+// collaborating with the provided golang.design/x/hotkey/mainthread is possible.
+// For applications based on other GUI frameworks, one has to use their provided
+// ability to run the "(*Hotkey).Register" on the main thread. See the "./examples"
+// folder for more examples.
 package hotkey
 
 // Event represents a hotkey event
@@ -68,13 +42,19 @@ func New(mods []Modifier, key Key) *Hotkey {
 // Register registers a combination of hotkeys. If the hotkey has
 // registered. This function will invalidates the old registration
 // and overwrites its callback.
-func (hk *Hotkey) Register() error {
-	return hk.register()
-}
+//
+// For macOS, this method must be called on the main thread, and
+// an OS main event loop also must be running. This can be done when
+// collaborating with the golang.design/x/hotkey/mainthread package.
+func (hk *Hotkey) Register() error { return hk.register() }
 
-// Listen handles a hotkey event and triggers a call to fn.
-// The hotkey listen hook terminates when the context is canceled.
-func (hk *Hotkey) Listen() <-chan Event { return hk.out }
+// Keydown returns a channel that receives a signal when hotkey is triggered.
+func (hk *Hotkey) Keydown() <-chan Event { return hk.out }
+
+// Keyup returns a channel that receives a signal when the hotkey is released.
+func (hk *Hotkey) Keyup() <-chan Event {
+	panic("hotkey: unimplemented")
+}
 
 // Unregister unregisters the hotkey.
 func (hk *Hotkey) Unregister() error {

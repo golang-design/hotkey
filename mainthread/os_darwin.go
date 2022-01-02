@@ -30,7 +30,7 @@ func init() {
 	runtime.LockOSThread()
 }
 
-// Call runs the function on the main thread.
+// Call calls f on the main thread and blocks until f finishes.
 func Call(f func()) {
 	if C.isMainThread() {
 		f()
@@ -42,8 +42,10 @@ func Call(f func()) {
 	}()
 }
 
-// Run runs the main thread.
-func Run(f func()) {
+// Init initializes the functionality of running arbitrary subsequent functions be called on the main system thread.
+//
+// Init must be called in the main.main function.
+func Init(f func()) {
 	go func() {
 		f()
 		os.Exit(0)

@@ -13,56 +13,16 @@ import "golang.design/x/hotkey"
 
 ## API Usage
 
-Package `hotkey` provides the basic facility to register a system-level
-hotkey so that the application can be notified if a user triggers the
-desired hotkey. By definition, a hotkey is a combination of modifiers
-and a single key, and thus register a hotkey that contains multiple
-keys is not supported at the moment. Furthermore, because of OS
-restriction, hotkey events must be handled on the main thread.
+Package hotkey provides the primary facility to register a system-level global hotkey shortcut to notify an application if a user triggers the desired hotkey. A hotkey must be a combination of modifiers and a single key.
 
-Therefore, in order to use this package properly, here is a complete
-example that corporates the mainthread:
-package:
-
-```go
-package main
-
-import (
-	"context"
-
-	"golang.design/x/hotkey"
-	"golang.design/x/hotkey/mainthread"
-)
-
-// initialize mainthread facility so that hotkey can be
-// properly registered to the system and handled by the
-// application.
-func main() { mainthread.Run(fn) }
-func fn() { // Use fn as the actual main function.
-	var (
-		mods = []hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}
-		k    = hotkey.KeyS
-	)
-
-	// Register a desired hotkey.
-	hk := hotkey.New(mods, k)
-	if err := hk.Register() err != nil {
-		panic("hotkey registration failed")
-	}
-
-	// Start listen hotkey event whenever you feel it is ready.
-	for range hk.Listen() {
-		println("hotkey ctrl+shift+s is triggered")
-	}
-}
-```
+Note a platform-specific detail on `macOS` due to the OS restriction (other platforms do not have this restriction): hotkey events must be handled on the "main thread". Therefore, to use this package properly, one must call the `(*Hotkey).Register` method on the main thread, and an OS app main event loop must be established. One can use  the provided `golang.design/x/hotkey/mainthread` for self-contained applications. For applications based on other GUI frameworks, one has to use their provided ability to run the `(*Hotkey).Register` on the main thread. See the [examples](./examples) folder for more examples.
 
 ## Who is using this package?
 
 The main purpose of building this package is to support the
 [midgard](https://changkun.de/s/midgard) project.
 
-To know more projects, check our [wiki](https://github.com/golang-design/clipboard/wiki) page.
+To know more projects, check our [wiki](https://github.com/golang-design/hotkey/wiki) page.
 
 ## License
 

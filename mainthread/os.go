@@ -8,70 +8,12 @@
 
 package mainthread
 
-import (
-	"fmt"
-	"runtime"
-	"sync"
-)
+import "golang.design/x/mainthread"
 
-func init() {
-	runtime.LockOSThread()
-}
+// Call calls f on the main thread and blocks until f finishes.
+func Call(f func()) { mainthread.Call(f) }
 
-var (
-	funcQ    = make(chan funcData, runtime.GOMAXPROCS(0))
-	donePool = sync.Pool{New: func() interface{} {
-		return make(chan error)
-	}}
-)
-
-type funcData struct {
-	fn   func()
-	done chan error
-}
-
-// Call runs the function on the main thread.
-func Call(f func()) {
-	done := donePool.Get().(chan error)
-	defer donePool.Put(done)
-
-	data := funcData{fn: f, done: done}
-	funcQ <- data
-	if err := <-done; err != nil {
-		panic(err)
-	}
-}
-
-// Run runs the main thread.
-func Run(main func()) {
-	done := donePool.Get().(chan error)
-	defer donePool.Put(done)
-
-	go func() {
-		defer func() {
-			done <- nil
-		}()
-		main()
-	}()
-
-	for {
-		select {
-		case f := <-funcQ:
-			func() {
-				defer func() {
-					r := recover()
-					if f.done != nil {
-						if r != nil {
-							f.done <- fmt.Errorf("%v", r)
-						} else {
-							f.done <- nil
-						}
-					}
-				}()
-				f.fn()
-			}()
-		case <-done:
-			return
-		}
-	}
-}
+// Init initializes the functionality of running arbitrary subsequent functions be called on the main system thread.
+//
+// Init must be called in the main.main function.
+func Init(main func()) { mainthread.Init(main) }

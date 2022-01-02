@@ -24,8 +24,6 @@ import (
 	"errors"
 	"runtime/cgo"
 	"sync"
-
-	"golang.design/x/hotkey/mainthread"
 )
 
 // Hotkey is a combination of modifiers and key to trigger an event
@@ -53,9 +51,7 @@ func (hk *Hotkey) register() error {
 	}
 
 	var ret C.int
-	mainthread.Call(func() {
-		ret = C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
-	})
+	ret = C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
 	if ret == C.int(-1) {
 		return errors.New("failed to register the hotkey")
 	}
