@@ -34,7 +34,7 @@ func TestHotkey(t *testing.T) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-hk.Listen():
+		case <-hk.Keydown():
 			fmt.Println("triggered")
 		}
 	}

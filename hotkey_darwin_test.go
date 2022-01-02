@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"golang.design/x/hotkey"
+	"golang.design/x/hotkey/mainthread"
 )
 
 // TestHotkey should always run success.
@@ -28,7 +29,9 @@ func TestHotkey(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), tt)
 	go func() {
 		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
-		if err := hk.Register(); err != nil {
+
+		var err error
+		if mainthread.Call(func() { err = hk.Register() }); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}
@@ -38,7 +41,7 @@ func TestHotkey(t *testing.T) {
 				cancel()
 				done <- struct{}{}
 				return
-			case <-hk.Listen():
+			case <-hk.Keydown():
 				fmt.Println("triggered ctrl+shift+s")
 			}
 		}
@@ -46,7 +49,9 @@ func TestHotkey(t *testing.T) {
 
 	go func() {
 		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModOption}, hotkey.KeyS)
-		if err := hk.Register(); err != nil {
+
+		var err error
+		if mainthread.Call(func() { err = hk.Register() }); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}
@@ -57,7 +62,7 @@ func TestHotkey(t *testing.T) {
 				cancel()
 				done <- struct{}{}
 				return
-			case <-hk.Listen():
+			case <-hk.Keydown():
 				fmt.Println("triggered ctrl+option+s")
 			}
 		}

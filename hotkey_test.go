@@ -16,5 +16,5 @@ import (
 // The test cannot be run twice since the mainthread loop may not be terminated:
 // go test -v -count=1
 func TestMain(m *testing.M) {
-	mainthread.Run(func() { os.Exit(m.Run()) })
+	mainthread.Init(func() { os.Exit(m.Run()) })
 }
