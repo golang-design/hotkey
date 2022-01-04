@@ -9,15 +9,34 @@
 // triggers the desired hotkey. A hotkey must be a combination of modifiers
 // and a single key.
 //
-// Note a platform specific detail on "macOS" due to the OS restriction (other
-// platforms does not have this restriction), hotkey events must be handled
-// on the "main thread". Therefore, in order to use this package properly,
-// one must call the "(*Hotkey).Register" method on the main thread, and an
-// OS app main event loop must be established. For self-contained applications,
-// collaborating with the provided golang.design/x/hotkey/mainthread is possible.
-// For applications based on other GUI frameworks, one has to use their provided
-// ability to run the "(*Hotkey).Register" on the main thread. See the "./examples"
-// folder for more examples.
+// Note platform specific details:
+//
+// - On "macOS" due to the OS restriction (other
+//   platforms does not have this restriction), hotkey events must be handled
+//   on the "main thread". Therefore, in order to use this package properly,
+//   one must start an OS main event loop on the main thread, For self-contained
+//   applications, using golang.design/x/hotkey/mainthread is possible.
+//   For applications based on other GUI frameworks, such as fyne, ebiten, or Gio.
+//   This is not necessary. See the "./examples" folder for more examples.
+//
+// - On Linux (X11), When AutoRepeat is enabled in the X server, the Keyup
+//   is triggered automatically and continuously as Keydown continues.
+//
+// 	func main() { mainthread.Init(fn) } // not necessary when use in Fyne, Ebiten or Gio.
+// 	func fn() {
+// 		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
+// 		err := hk.Register()
+// 		if err != nil {
+// 			return
+// 		}
+// 		fmt.Printf("hotkey: %v is registered\n", hk)
+// 		<-hk.Keydown()
+// 		fmt.Printf("hotkey: %v is down\n", hk)
+// 		<-hk.Keyup()
+// 		fmt.Printf("hotkey: %v is up\n", hk)
+// 		hk.Unregister()
+// 		fmt.Printf("hotkey: %v is unregistered\n", hk)
+// 	}
 package hotkey
 
 import (
@@ -41,6 +60,7 @@ type Hotkey struct {
 	keyupOut   <-chan Event
 }
 
+// New creates a new hotkey for the given modifiers and keycode.
 func New(mods []Modifier, key Key) *Hotkey {
 	keydownIn, keydownOut := newEventChan()
 	keyupIn, keyupOut := newEventChan()
@@ -67,20 +87,12 @@ func New(mods []Modifier, key Key) *Hotkey {
 // Register registers a combination of hotkeys. If the hotkey has
 // registered. This function will invalidates the old registration
 // and overwrites its callback.
-//
-// For macOS, this method must be called on the main thread, and
-// an OS main event loop also must be running. This can be done when
-// collaborating with the golang.design/x/hotkey/mainthread package.
 func (hk *Hotkey) Register() error { return hk.register() }
 
 // Keydown returns a channel that receives a signal when the hotkey is triggered.
 func (hk *Hotkey) Keydown() <-chan Event { return hk.keydownOut }
 
 // Keyup returns a channel that receives a signal when the hotkey is released.
-//
-// Platform specific details:
-// - On Linux (X11), When AutoRepeat is enabled in the X server, the Keyup
-//   is triggered automatically and continuously as Keydown continues.
 func (hk *Hotkey) Keyup() <-chan Event { return hk.keyupOut }
 
 // Unregister unregisters the hotkey.

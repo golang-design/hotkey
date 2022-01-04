@@ -15,7 +15,8 @@ package hotkey
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 
-extern void hotkeyCallback(uintptr_t handle);
+extern void keydownCallback(uintptr_t handle);
+extern void keyupCallback(uintptr_t handle);
 int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref);
 int unregisterHotKey(EventHotKeyRef ref);
 */
@@ -44,14 +45,13 @@ func (hk *Hotkey) register() error {
 	// A cgo handle could ran out of space, but since in hotkey purpose
 	// we won't have that much number of hotkeys. So this should be fine.
 
-	h := cgo.NewHandle(hk.keydownIn)
+	h := cgo.NewHandle(hk)
 	var mod Modifier
 	for _, m := range hk.mods {
 		mod += m
 	}
 
-	var ret C.int
-	ret = C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
+	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
 	if ret == C.int(-1) {
 		return errors.New("failed to register the hotkey")
 	}
@@ -75,10 +75,16 @@ func (hk *Hotkey) unregister() error {
 	return nil
 }
 
-//export hotkeyCallback
-func hotkeyCallback(h uintptr) {
-	ch := cgo.Handle(h).Value().(chan<- Event)
-	ch <- Event{}
+//export keydownCallback
+func keydownCallback(h uintptr) {
+	hk := cgo.Handle(h).Value().(*Hotkey)
+	hk.keydownIn <- Event{}
+}
+
+//export keyupCallback
+func keyupCallback(h uintptr) {
+	hk := cgo.Handle(h).Value().(*Hotkey)
+	hk.keyupIn <- Event{}
 }
 
 // Modifier represents a modifier.

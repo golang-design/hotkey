@@ -39,8 +39,7 @@ func reghk() {
 	// Register a desired hotkey.
 	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
 
-	var err error
-	if ebiten.RunOnMainThread(func() { err = hk.Register() }); err != nil {
+	if err := hk.Register(); err != nil {
 		log.Println("failed to register hotkey: %v", err)
 		return
 	}

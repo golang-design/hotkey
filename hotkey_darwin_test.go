@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"golang.design/x/hotkey"
-	"golang.design/x/hotkey/mainthread"
 )
 
 // TestHotkey should always run success.
@@ -29,9 +28,7 @@ func TestHotkey(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), tt)
 	go func() {
 		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
-
-		var err error
-		if mainthread.Call(func() { err = hk.Register() }); err != nil {
+		if err := hk.Register(); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}
@@ -49,9 +46,7 @@ func TestHotkey(t *testing.T) {
 
 	go func() {
 		hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModOption}, hotkey.KeyS)
-
-		var err error
-		if mainthread.Call(func() { err = hk.Register() }); err != nil {
+		if err := hk.Register(); err != nil {
 			t.Errorf("failed to register hotkey: %v", err)
 			return
 		}

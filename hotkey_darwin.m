@@ -9,30 +9,47 @@
 #include <stdint.h>
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
-
-extern void hotkeyCallback(uintptr_t handle);
+extern void keydownCallback(uintptr_t handle);
+extern void keyupCallback(uintptr_t handle);
 
 static OSStatus
-eventHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData) {
+keydownHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData) {
 	EventHotKeyID k;
 	GetEventParameter(theEvent, kEventParamDirectObject, typeEventHotKeyID, NULL, sizeof(k), NULL, &k);
-	hotkeyCallback((uintptr_t)k.id); // use id as handle
+	keydownCallback((uintptr_t)k.id); // use id as handle
+	return noErr;
+}
+
+static OSStatus
+keyupHandler(EventHandlerCallRef nextHandler, EventRef theEvent, void *userData) {
+	EventHotKeyID k;
+	GetEventParameter(theEvent, kEventParamDirectObject, typeEventHotKeyID, NULL, sizeof(k), NULL, &k);
+	keyupCallback((uintptr_t)k.id); // use id as handle
 	return noErr;
 }
 
 // registerHotkeyWithCallback registers a global system hotkey for callbacks.
 int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref) {
-	EventTypeSpec eventType;
-	eventType.eventClass = kEventClassKeyboard;
-	eventType.eventKind = kEventHotKeyPressed;
-	InstallApplicationEventHandler(
-		&eventHandler, 1, &eventType, NULL, NULL
-	);
+	__block OSStatus s;
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		EventTypeSpec keydownEvent;
+		keydownEvent.eventClass = kEventClassKeyboard;
+		keydownEvent.eventKind = kEventHotKeyPressed;
+		EventTypeSpec keyupEvent;
+		keyupEvent.eventClass = kEventClassKeyboard;
+		keyupEvent.eventKind = kEventHotKeyReleased;
+		InstallApplicationEventHandler(
+			&keydownHandler, 1, &keydownEvent, NULL, NULL
+		);
+		InstallApplicationEventHandler(
+			&keyupHandler, 1, &keyupEvent, NULL, NULL
+		);
 
-	EventHotKeyID hkid = {.id = handle};
-	OSStatus s = RegisterEventHotKey(
-		key, mod, hkid, GetApplicationEventTarget(), 0, ref
-	);
+		EventHotKeyID hkid = {.id = handle};
+		s = RegisterEventHotKey(
+			key, mod, hkid, GetApplicationEventTarget(), 0, ref
+		);
+	});
 	if (s != noErr) {
 		return -1;
 	}
