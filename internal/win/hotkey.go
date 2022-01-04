@@ -19,7 +19,10 @@ var (
 	registerHotkey   = user32.NewProc("RegisterHotKey")
 	unregisterHotkey = user32.NewProc("UnregisterHotKey")
 	getMessage       = user32.NewProc("GetMessageW")
+	peekMessage      = user32.NewProc("PeekMessageA")
 	sendMessage      = user32.NewProc("SendMessageW")
+	getAsyncKeyState = user32.NewProc("GetAsyncKeyState")
+	quitMessage      = user32.NewProc("PostQuitMessage")
 )
 
 // RegisterHotKey defines a system-wide hot key.
@@ -86,4 +89,34 @@ func GetMessage(msg *MSG, hWnd uintptr, msgFilterMin, msgFilterMax uint32) bool 
 	)
 
 	return ret != 0
+}
+
+// PeekMessage dispatches incoming sent messages, checks the thread message
+// queue for a posted message, and retrieves the message (if any exist).
+//
+// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-peekmessagea
+func PeekMessage(msg *MSG, hWnd uintptr, msgFilterMin, msgFilterMax uint32) bool {
+	ret, _, _ := peekMessage.Call(
+		uintptr(unsafe.Pointer(msg)),
+		hWnd,
+		uintptr(msgFilterMin),
+		uintptr(msgFilterMax),
+		0, // PM_NOREMOVE
+	)
+
+	return ret != 0
+}
+
+// PostQuitMessage indicates to the system that a thread has made
+// a request to terminate (quit). It is typically used in response
+// to a WM_DESTROY message.
+//
+// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postquitmessage
+func PostQuitMessage(exitCode int) {
+	quitMessage.Call(uintptr(exitCode))
+}
+
+func GetAsyncKeyState(keycode int) uintptr {
+	ret, _, _ := getAsyncKeyState.Call(uintptr(keycode))
+	return ret
 }

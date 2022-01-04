@@ -44,7 +44,7 @@ func (hk *Hotkey) register() error {
 	// A cgo handle could ran out of space, but since in hotkey purpose
 	// we won't have that much number of hotkeys. So this should be fine.
 
-	h := cgo.NewHandle(hk.in)
+	h := cgo.NewHandle(hk.keydownIn)
 	var mod Modifier
 	for _, m := range hk.mods {
 		mod += m

@@ -20,6 +20,11 @@
 // folder for more examples.
 package hotkey
 
+import (
+	"fmt"
+	"runtime"
+)
+
 // Event represents a hotkey event
 type Event struct{}
 
@@ -30,13 +35,33 @@ type Hotkey struct {
 	mods []Modifier
 	key  Key
 
-	in  chan<- Event
-	out <-chan Event
+	keydownIn  chan<- Event
+	keydownOut <-chan Event
+	keyupIn    chan<- Event
+	keyupOut   <-chan Event
 }
 
 func New(mods []Modifier, key Key) *Hotkey {
-	in, out := newEventChan()
-	return &Hotkey{mods: mods, key: key, in: in, out: out}
+	keydownIn, keydownOut := newEventChan()
+	keyupIn, keyupOut := newEventChan()
+	hk := &Hotkey{
+		mods:       mods,
+		key:        key,
+		keydownIn:  keydownIn,
+		keydownOut: keydownOut,
+		keyupIn:    keyupIn,
+		keyupOut:   keyupOut,
+	}
+
+	// Make sure the hotkey is unregistered when the created
+	// hotkey is garbage collected.
+	runtime.SetFinalizer(hk, func(x interface{}) {
+		hk := x.(*Hotkey)
+		hk.unregister()
+		close(hk.keydownIn)
+		close(hk.keyupIn)
+	})
+	return hk
 }
 
 // Register registers a combination of hotkeys. If the hotkey has
@@ -49,12 +74,10 @@ func New(mods []Modifier, key Key) *Hotkey {
 func (hk *Hotkey) Register() error { return hk.register() }
 
 // Keydown returns a channel that receives a signal when hotkey is triggered.
-func (hk *Hotkey) Keydown() <-chan Event { return hk.out }
+func (hk *Hotkey) Keydown() <-chan Event { return hk.keydownOut }
 
 // Keyup returns a channel that receives a signal when the hotkey is released.
-func (hk *Hotkey) Keyup() <-chan Event {
-	panic("hotkey: unimplemented")
-}
+func (hk *Hotkey) Keyup() <-chan Event { return hk.keyupOut }
 
 // Unregister unregisters the hotkey.
 func (hk *Hotkey) Unregister() error {
@@ -63,12 +86,21 @@ func (hk *Hotkey) Unregister() error {
 		return err
 	}
 
-	// Setup a new event channel.
-	close(hk.in)
-	in, out := newEventChan()
-	hk.in = in
-	hk.out = out
+	// Reset a new event channel.
+	close(hk.keydownIn)
+	close(hk.keyupIn)
+	hk.keydownIn, hk.keydownOut = newEventChan()
+	hk.keyupIn, hk.keyupOut = newEventChan()
 	return nil
+}
+
+// String returns a string representation of the hotkey.
+func (hk *Hotkey) String() string {
+	s := fmt.Sprintf("%v", hk.key)
+	for _, mod := range hk.mods {
+		s += fmt.Sprintf("+%v", mod)
+	}
+	return s
 }
 
 // newEventChan returns a sender and a receiver of a buffered channel

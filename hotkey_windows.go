@@ -9,11 +9,11 @@
 package hotkey
 
 import (
-	"context"
 	"errors"
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.design/x/hotkey/internal/win"
 )
@@ -22,8 +22,7 @@ type platformHotkey struct {
 	mu         sync.Mutex
 	hotkeyId   uint64
 	registered bool
-	ctx        context.Context
-	cancel     context.CancelFunc
+	funcs      chan func()
 	canceled   chan struct{}
 }
 
@@ -36,24 +35,36 @@ func (hk *Hotkey) register() error {
 	hk.mu.Lock()
 	if hk.registered {
 		hk.mu.Unlock()
-		return errors.New("hotkey already registered.")
+		return errors.New("hotkey already registered")
 	}
+
 	mod := uint8(0)
 	for _, m := range hk.mods {
 		mod = mod | uint8(m)
 	}
 
 	hk.hotkeyId = atomic.AddUint64(&hotkeyId, 1)
-	ok, err := win.RegisterHotKey(0, uintptr(hk.hotkeyId), uintptr(mod), uintptr(hk.key))
+	hk.funcs = make(chan func())
+	hk.canceled = make(chan struct{})
+	go hk.handle()
+
+	var (
+		ok   bool
+		err  error
+		done = make(chan struct{})
+	)
+	hk.funcs <- func() {
+		ok, err = win.RegisterHotKey(0, uintptr(hk.hotkeyId), uintptr(mod), uintptr(hk.key))
+		done <- struct{}{}
+	}
+	<-done
 	if !ok {
+		close(hk.canceled)
+		hk.mu.Unlock()
 		return err
 	}
 	hk.registered = true
-	hk.ctx, hk.cancel = context.WithCancel(context.Background())
-	hk.canceled = make(chan struct{})
 	hk.mu.Unlock()
-
-	go hk.handle()
 	return nil
 }
 
@@ -64,34 +75,64 @@ func (hk *Hotkey) unregister() error {
 	if !hk.registered {
 		return errors.New("hotkey is not registered")
 	}
-	hk.cancel()
+
+	done := make(chan struct{})
+	hk.funcs <- func() {
+		win.UnregisterHotKey(0, uintptr(hk.hotkeyId))
+		done <- struct{}{}
+		close(hk.canceled)
+	}
+	<-done
+
 	<-hk.canceled
 	hk.registered = false
 	return nil
 }
 
-// msgHotkey represents hotkey message
-const msgHotkey uint32 = 0x0312
+const (
+	// wmHotkey represents hotkey message
+	wmHotkey uint32 = 0x0312
+	wmQuit   uint32 = 0x0012
+)
 
 // handle handles the hotkey event loop.
 func (hk *Hotkey) handle() {
+	// We could optimize this. So far each hotkey is served in an
+	// individual thread. If we have too many hotkeys, then a program
+	// have to create too many threads to serve them.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	msg := win.MSG{}
-	// KNOWN ISSUE: This message loop need to press an additional
-	// hotkey to eventually return if ctx.Done() is ready.
-	for win.GetMessage(&msg, 0, 0, 0) {
-		switch msg.Message {
-		case msgHotkey:
+	tk := time.NewTicker(time.Second / 100)
+	for range tk.C {
+		msg := win.MSG{}
+		if !win.PeekMessage(&msg, 0, 0, 0) {
 			select {
-			case <-hk.ctx.Done():
-				win.UnregisterHotKey(0, uintptr(hk.hotkeyId))
-				close(hk.canceled)
+			case f := <-hk.funcs:
+				f()
+			case <-hk.canceled:
 				return
 			default:
-				hk.in <- Event{}
 			}
+			continue
+		}
+		if !win.GetMessage(&msg, 0, 0, 0) {
+			return
+		}
+
+		switch msg.Message {
+		case wmHotkey:
+			hk.keydownIn <- Event{}
+
+			tk := time.NewTicker(time.Second / 100)
+			for range tk.C {
+				if win.GetAsyncKeyState(int(hk.key)) == 0 {
+					hk.keyupIn <- Event{}
+					break
+				}
+			}
+		case wmQuit:
+			return
 		}
 	}
 }

@@ -96,7 +96,7 @@ func (hk *Hotkey) handle() {
 			if ret != 0 {
 				continue
 			}
-			hk.in <- Event{}
+			hk.keydownIn <- Event{}
 		}
 	}
 }
