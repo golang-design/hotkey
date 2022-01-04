@@ -73,10 +73,14 @@ func New(mods []Modifier, key Key) *Hotkey {
 // collaborating with the golang.design/x/hotkey/mainthread package.
 func (hk *Hotkey) Register() error { return hk.register() }
 
-// Keydown returns a channel that receives a signal when hotkey is triggered.
+// Keydown returns a channel that receives a signal when the hotkey is triggered.
 func (hk *Hotkey) Keydown() <-chan Event { return hk.keydownOut }
 
 // Keyup returns a channel that receives a signal when the hotkey is released.
+//
+// Platform specific details:
+// - On Linux (X11), When AutoRepeat is enabled in the X server, the Keyup
+//   is triggered automatically and continuously as Keydown continues.
 func (hk *Hotkey) Keyup() <-chan Event { return hk.keyupOut }
 
 // Unregister unregisters the hotkey.

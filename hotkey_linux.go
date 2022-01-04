@@ -11,13 +11,17 @@ package hotkey
 /*
 #cgo LDFLAGS: -lX11
 
+#include <stdint.h>
+
 int displayTest();
-int waitHotkey(unsigned int mod, int key);
+int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key);
 */
 import "C"
 import (
 	"context"
 	"errors"
+	"runtime"
+	"runtime/cgo"
 	"sync"
 )
 
@@ -80,25 +84,38 @@ func (hk *Hotkey) unregister() error {
 // handle registers an application global hotkey to the system,
 // and returns a channel that will signal if the hotkey is triggered.
 func (hk *Hotkey) handle() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	// KNOWN ISSUE: if a hotkey is grabbed by others, C side will crash the program
 
 	var mod Modifier
 	for _, m := range hk.mods {
 		mod = mod | m
 	}
+	h := cgo.NewHandle(hk)
+	defer h.Delete()
+
 	for {
 		select {
 		case <-hk.ctx.Done():
 			close(hk.canceled)
 			return
 		default:
-			ret := C.waitHotkey(C.uint(mod), C.int(hk.key))
-			if ret != 0 {
-				continue
-			}
-			hk.keydownIn <- Event{}
+			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key))
 		}
 	}
+}
+
+//export hotkeyDown
+func hotkeyDown(h uintptr) {
+	hk := cgo.Handle(h).Value().(*Hotkey)
+	hk.keydownIn <- Event{}
+}
+
+//export hotkeyUp
+func hotkeyUp(h uintptr) {
+	hk := cgo.Handle(h).Value().(*Hotkey)
+	hk.keyupIn <- Event{}
 }
 
 // Modifier represents a modifier.

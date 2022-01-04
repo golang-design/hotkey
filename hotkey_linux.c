@@ -6,9 +6,13 @@
 
 //go:build linux
 
+#include <stdint.h>
 #include <stdio.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+
+extern void hotkeyDown(uintptr_t hkhandle);
+extern void hotkeyUp(uintptr_t hkhandle);
 
 int displayTest() {
 	Display* d = NULL;
@@ -43,10 +47,7 @@ int displayTest() {
 
 // waitHotkey blocks until the hotkey is triggered.
 // this function crashes the program if the hotkey already grabbed by others.
-int waitHotkey(unsigned int mod, int key) {
-	// FIXME: handle registered hotkey properly.
-	// XSetErrorHandler(handleErrors);
-
+int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key) {
 	Display* d = NULL;
 	for (int i = 0; i < 42; i++) {
 		d = XOpenDisplay(0);
@@ -64,6 +65,10 @@ int waitHotkey(unsigned int mod, int key) {
 		XNextEvent(d, &ev);
 		switch(ev.type) {
 		case KeyPress:
+			hotkeyDown(hkhandle);
+			continue;
+		case KeyRelease:
+			hotkeyUp(hkhandle);
 			XUngrabKey(d, keycode, mod, DefaultRootWindow(d));
 			XCloseDisplay(d);
 			return 0;
