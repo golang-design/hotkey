@@ -8,8 +8,6 @@
 
 package hotkey
 
-import "context"
-
 type platformHotkey struct{}
 
 // Modifier represents a modifier
@@ -24,10 +22,5 @@ func (hk *Hotkey) register() error {
 
 // unregister deregisteres a system hotkey.
 func (hk *Hotkey) unregister() error {
-	panic("hotkey: cannot use when CGO_ENABLED=0")
-}
-
-// handle handles the hotkey event loop.
-func (hk *Hotkey) handle(ctx context.Context) {
 	panic("hotkey: cannot use when CGO_ENABLED=0")
 }
