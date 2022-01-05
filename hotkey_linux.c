@@ -13,6 +13,7 @@
 
 extern void hotkeyDown(uintptr_t hkhandle);
 extern void hotkeyUp(uintptr_t hkhandle);
+extern void onError(int typ, unsigned long serial, unsigned char error_code, unsigned char request_code, unsigned char minor_code);
 
 int displayTest() {
 	Display* d = NULL;
@@ -27,23 +28,23 @@ int displayTest() {
 	return 0;
 }
 
-// FIXME: handle bad access properly.
-// int handleErrors( Display* dpy, XErrorEvent* pErr )
-// {
-//     printf("X Error Handler called, values: %d/%lu/%d/%d/%d\n",
-//         pErr->type,
-//         pErr->serial,
-//         pErr->error_code,
-//         pErr->request_code,
-//         pErr->minor_code );
-//     if( pErr->request_code == 33 ){  // 33 (X_GrabKey)
-//         if( pErr->error_code == BadAccess ){
-//             printf("ERROR: key combination already grabbed by another client.\n");
-//             return 0;
-//         }
-//     }
-//     return 0;
-// }
+static int handleErrors(Display* dpy, XErrorEvent* pErr)
+{
+	onError(pErr->type, pErr->serial, pErr->error_code, pErr->request_code, pErr->minor_code );
+	return 0;
+}
+
+static int (*defaultErrHandler)(Display*, XErrorEvent*);
+
+int setErrorHandler() {
+	if (!defaultErrHandler) {
+		defaultErrHandler = XSetErrorHandler(handleErrors);
+	}
+}
+
+int restoreErrorHandler() {
+	XSetErrorHandler(defaultErrHandler);
+}
 
 // waitHotkey blocks until the hotkey is triggered.
 // this function crashes the program if the hotkey already grabbed by others.

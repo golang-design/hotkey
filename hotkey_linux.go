@@ -14,6 +14,8 @@ package hotkey
 #include <stdint.h>
 
 int displayTest();
+int setErrorHandler();
+int restoreErrorHandler();
 int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key);
 */
 import "C"
@@ -44,6 +46,36 @@ func init() {
 	}
 }
 
+type XErrorEvent struct {
+	typ         int
+	serial      uint64
+	errorCode   uint8
+	requestCode uint8
+	minorCode   uint8
+}
+
+var (
+	errHandler func(e XErrorEvent)
+)
+
+func XSetErrorHandler(handler func(e XErrorEvent)) {
+	errHandler = handler
+	C.setErrorHandler()
+}
+
+func XRestoreErrorHandler() {
+	C.restoreErrorHandler()
+	errHandler = nil
+}
+
+//export onError
+func onError(typ int, serial uint64, errorCode uint8, requestCode uint8, minorCode uint8) {
+	if errHandler == nil {
+		return
+	}
+	errHandler(XErrorEvent{typ, serial, errorCode, requestCode, minorCode})
+}
+
 type platformHotkey struct {
 	mu         sync.Mutex
 	registered bool
@@ -52,7 +84,6 @@ type platformHotkey struct {
 	canceled   chan struct{}
 }
 
-// Nothing needs to do for register
 func (hk *Hotkey) register() error {
 	hk.mu.Lock()
 	if hk.registered {
@@ -68,7 +99,6 @@ func (hk *Hotkey) register() error {
 	return nil
 }
 
-// Nothing needs to do for unregister
 func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
@@ -86,7 +116,6 @@ func (hk *Hotkey) unregister() error {
 func (hk *Hotkey) handle() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	// KNOWN ISSUE: if a hotkey is grabbed by others, C side will crash the program
 
 	var mod Modifier
 	for _, m := range hk.mods {
