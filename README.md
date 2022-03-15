@@ -47,6 +47,8 @@ Note platform specific details:
   This is not necessary. See the "[./examples](./examples)" folder for more examples.
 - On Linux (X11), when AutoRepeat is enabled in the X server, the Keyup
   is triggered automatically and continuously as Keydown continues.
+- If this package did not include a desired key, one can always provide the keycode to the API.
+  For example, if a key code is 0x15, then the corresponding key is `hotkey.Key(0x15)`.
 
 ## Examples
 
