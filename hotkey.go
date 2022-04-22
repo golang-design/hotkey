@@ -119,6 +119,61 @@ func (hk *Hotkey) String() string {
 	return s
 }
 
+var namedKeyMap map[string]Key
+
+//run at run-time
+func init() {
+	namedKeyMap = map[string]Key{
+		"0":      Key0,
+		"1":      Key1,
+		"2":      Key2,
+		"3":      Key3,
+		"4":      Key4,
+		"5":      Key5,
+		"6":      Key6,
+		"7":      Key7,
+		"8":      Key8,
+		"9":      Key9,
+		"Space":  KeySpace,
+		"a":      KeyA,
+		"b":      KeyB,
+		"c":      KeyC,
+		"d":      KeyD,
+		"e":      KeyE,
+		"f":      KeyF,
+		"g":      KeyG,
+		"h":      KeyH,
+		"i":      KeyI,
+		"j":      KeyJ,
+		"k":      KeyK,
+		"l":      KeyL,
+		"m":      KeyM,
+		"n":      KeyN,
+		"o":      KeyO,
+		"p":      KeyP,
+		"q":      KeyQ,
+		"r":      KeyR,
+		"s":      KeyS,
+		"t":      KeyT,
+		"u":      KeyU,
+		"v":      KeyV,
+		"w":      KeyW,
+		"x":      KeyX,
+		"y":      KeyY,
+		"z":      KeyZ,
+		"Return": KeyReturn,
+		"Escape": KeyEscape,
+		"Delete": KeyDelete,
+		"Tab":    KeyTab,
+	}
+}
+
+//Parses a Key from a string, returns if the key was found as the second value
+func ParseKey(name string) (Key, bool) {
+	value, ok := namedKeyMap[name]
+	return value, ok
+}
+
 // newEventChan returns a sender and a receiver of a buffered channel
 // with infinite capacity.
 func newEventChan() (chan<- Event, <-chan Event) {

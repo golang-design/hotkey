@@ -192,4 +192,9 @@ const (
 	KeyX     Key = 0x58
 	KeyY     Key = 0x59
 	KeyZ     Key = 0x5A
+
+	KeyReturn Key = 0x0D
+	KeyEscape Key = 0x1B
+	KeyDelete Key = 0x2E
+	KeyTab    Key = 0x09
 )

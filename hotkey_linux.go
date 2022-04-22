@@ -135,7 +135,7 @@ const (
 
 // Key represents a key.
 // See /usr/include/X11/keysymdef.h
-type Key uint8
+type Key uint16
 
 // All kinds of keys
 const (
@@ -176,4 +176,9 @@ const (
 	KeyX     Key = 0x0078
 	KeyY     Key = 0x0079
 	KeyZ     Key = 0x007a
+
+	KeyReturn Key = 0xff0d
+	KeyEscape Key = 0xff1b
+	KeyDelete Key = 0xffff
+	KeyTab    Key = 0xff1b
 )
