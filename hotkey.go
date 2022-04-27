@@ -119,11 +119,12 @@ func (hk *Hotkey) String() string {
 	return s
 }
 
-var namedKeyMap map[string]Key
+var NamedKeyMap map[string]Key
+var NamedModifierMap map[string]Modifier
 
 //run at run-time
 func init() {
-	namedKeyMap = map[string]Key{
+	NamedKeyMap = map[string]Key{
 		"0":      Key0,
 		"1":      Key1,
 		"2":      Key2,
@@ -165,13 +166,41 @@ func init() {
 		"Escape": KeyEscape,
 		"Delete": KeyDelete,
 		"Tab":    KeyTab,
+		"Left":   KeyLeft,
+		"Right":  KeyRight,
+		"Up":     KeyUp,
+		"Down":   KeyDown,
+		"F1":     KeyF1,
+		"F2":     KeyF2,
+		"F3":     KeyF3,
+		"F4":     KeyF4,
+		"F5":     KeyF5,
+		"F6":     KeyF6,
+		"F7":     KeyF7,
+		"F8":     KeyF8,
+		"F9":     KeyF9,
+		"F10":    KeyF10,
+		"F11":    KeyF11,
+		"F12":    KeyF12,
+		"F13":    KeyF13,
+		"F14":    KeyF14,
+		"F15":    KeyF15,
+		"F16":    KeyF16,
+		"F17":    KeyF17,
+		"F18":    KeyF18,
+		"F19":    KeyF19,
+		"F20":    KeyF20,
 	}
-}
 
-//Parses a Key from a string, returns if the key was found as the second value
-func ParseKey(name string) (Key, bool) {
-	value, ok := namedKeyMap[name]
-	return value, ok
+	NamedModifierMap = map[string]Modifier{
+		"Ctrl":  ModCtrl,
+		"Shift": ModShift,
+		"Mod1":  Mod1,
+		"Mod2":  Mod2,
+		"Mod3":  Mod3,
+		"Mod4":  Mod4,
+		"Mod5":  Mod5,
+	}
 }
 
 // newEventChan returns a sender and a receiver of a buffered channel

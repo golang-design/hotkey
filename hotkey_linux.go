@@ -181,4 +181,30 @@ const (
 	KeyEscape Key = 0xff1b
 	KeyDelete Key = 0xffff
 	KeyTab    Key = 0xff1b
+
+	KeyLeft  Key = 0xff51
+	KeyRight Key = 0xff53
+	KeyUp    Key = 0xff52
+	KeyDown  Key = 0xff54
+
+	KeyF1  Key = 0xffbe
+	KeyF2  Key = 0xffbf
+	KeyF3  Key = 0xffc0
+	KeyF4  Key = 0xffc1
+	KeyF5  Key = 0xffc2
+	KeyF6  Key = 0xffc3
+	KeyF7  Key = 0xffc4
+	KeyF8  Key = 0xffc5
+	KeyF9  Key = 0xffc6
+	KeyF10 Key = 0xffc7
+	KeyF11 Key = 0xffc8
+	KeyF12 Key = 0xffc9
+	KeyF13 Key = 0xffca
+	KeyF14 Key = 0xffcb
+	KeyF15 Key = 0xffcc
+	KeyF16 Key = 0xffcd
+	KeyF17 Key = 0xffce
+	KeyF18 Key = 0xffcf
+	KeyF19 Key = 0xffd0
+	KeyF20 Key = 0xffd1
 )
