@@ -151,7 +151,7 @@ const (
 
 // Key represents a key.
 // https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-type Key uint8
+type Key uint16
 
 // All kinds of Keys
 const (
@@ -192,4 +192,35 @@ const (
 	KeyX     Key = 0x58
 	KeyY     Key = 0x59
 	KeyZ     Key = 0x5A
+
+	KeyReturn Key = 0x0D
+	KeyEscape Key = 0x1B
+	KeyDelete Key = 0x2E
+	KeyTab    Key = 0x09
+
+	KeyLeft  Key = 0x25
+	KeyRight Key = 0x27
+	KeyUp    Key = 0x26
+	KeyDown  Key = 0x28
+
+	KeyF1  Key = 0x70
+	KeyF2  Key = 0x71
+	KeyF3  Key = 0x72
+	KeyF4  Key = 0x73
+	KeyF5  Key = 0x74
+	KeyF6  Key = 0x75
+	KeyF7  Key = 0x76
+	KeyF8  Key = 0x77
+	KeyF9  Key = 0x78
+	KeyF10 Key = 0x79
+	KeyF11 Key = 0x7A
+	KeyF12 Key = 0x7B
+	KeyF13 Key = 0x7C
+	KeyF14 Key = 0x7D
+	KeyF15 Key = 0x7E
+	KeyF16 Key = 0x7F
+	KeyF17 Key = 0x80
+	KeyF18 Key = 0x81
+	KeyF19 Key = 0x82
+	KeyF20 Key = 0x83
 )
