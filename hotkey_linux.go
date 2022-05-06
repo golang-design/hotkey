@@ -14,7 +14,7 @@ package hotkey
 #include <stdint.h>
 
 int displayTest();
-int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key);
+int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key, char* is_registered);
 */
 import "C"
 import (
@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"runtime/cgo"
 	"sync"
+	"unsafe"
 )
 
 const errmsg = `Failed to initialize the X11 display, and the clipboard package
@@ -101,7 +102,8 @@ func (hk *Hotkey) handle() {
 			close(hk.canceled)
 			return
 		default:
-			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key))
+			var registered_ptr *C.char = (*C.char)(unsafe.Pointer(&hk.registered))
+			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key), registered_ptr)
 		}
 	}
 }
