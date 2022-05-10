@@ -74,7 +74,7 @@ Window createInvisWindow(Display *d) {
 // Sends a custom ClientMessage of type (Atom) "go_hotkey_cancel_hotkey"
 // Passed value 'True' of XInternAtom creates the Atom, if it does not exist yet
 void sendCancel(Display *d, Window window) {
-  Atom atom = XInternAtom(d, "go_hotkey_cancel_hotkey", True);
+  Atom atom = XInternAtom(d, "golangdesign_hotkey_cancel_hotkey", True);
   XClientMessageEvent clientEvent;
   memset(&clientEvent, 0, sizeof(clientEvent));
   clientEvent.type = ClientMessage;
