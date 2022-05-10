@@ -39,3 +39,26 @@ func TestHotkey(t *testing.T) {
 		}
 	}
 }
+
+func TestHotkey_Unregister(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.Mod2, hotkey.Mod4}, hotkey.KeyA)
+	if err := hk.Register(); err != nil {
+		t.Errorf("failed to register hotkey: %v", err)
+		return
+	}
+	if err := hk.Unregister(); err != nil {
+		t.Errorf("failed to unregister hotkey: %v", err)
+		return
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-hk.Keydown():
+			t.Fatalf("hotkey should not be registered but actually triggered.")
+		}
+	}
+}

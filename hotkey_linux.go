@@ -82,8 +82,10 @@ func (hk *Hotkey) unregister() error {
 	if !hk.registered {
 		return errors.New("hotkey is not registered.")
 	}
-	C.sendCancel(hk.display, hk.window)
 	hk.cancel()
+	if hk.display != nil {
+		C.sendCancel(hk.display, hk.window)
+	}
 	hk.registered = false
 	<-hk.canceled
 	return nil
@@ -105,7 +107,7 @@ func (hk *Hotkey) handle() {
 	}
 	h := cgo.NewHandle(hk)
 	defer h.Delete()
-	defer C.cleanupConnection(hk.display, hk.window)
+	defer hk.cleanConnection()
 	for {
 		select {
 		case <-hk.ctx.Done():
@@ -115,6 +117,11 @@ func (hk *Hotkey) handle() {
 			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key), hk.display, hk.window)
 		}
 	}
+}
+
+func (hk *Hotkey) cleanConnection() {
+	C.cleanupConnection(hk.display, hk.window)
+	hk.display = nil
 }
 
 //export hotkeyDown

@@ -4,13 +4,12 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-// go:build linux
+//go:build linux
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <stdint.h>
-// Needed for memset()
-#include <string.h>
+#include <string.h> // memset
 
 extern void hotkeyDown(uintptr_t hkhandle);
 extern void hotkeyUp(uintptr_t hkhandle);
