@@ -19,7 +19,12 @@ triggers the desired hotkey. A hotkey must be a combination of modifiers
 and a single key.
 
 ```go
-func main() { mainthread.Init(fn) } // not necessary when use in Fyne, Ebiten or Gio.
+import (
+    "golang.design/x/hotkey"
+    "golang.design/x/hotkey/mainthread"
+)
+
+func main() { mainthread.Init(fn) } // Not necessary when use in Fyne, Ebiten or Gio.
 func fn() {
     hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
     err := hk.Register()
