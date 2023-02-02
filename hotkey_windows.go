@@ -104,6 +104,7 @@ func (hk *Hotkey) handle() {
 	defer runtime.UnlockOSThread()
 
 	tk := time.NewTicker(time.Second / 100)
+	isKeyDown := false
 	for range tk.C {
 		msg := win.MSG{}
 		if !win.PeekMessage(&msg, 0, 0, 0) {
@@ -113,6 +114,11 @@ func (hk *Hotkey) handle() {
 			case <-hk.canceled:
 				return
 			default:
+				// if the latest status is KeyDown, and AsyncKeyState is 0, consider key is up.
+				if win.GetAsyncKeyState(int(hk.key)) == 0 && isKeyDown {
+					hk.keyupIn <- Event{}
+					isKeyDown = false
+				}
 			}
 			continue
 		}
@@ -123,14 +129,7 @@ func (hk *Hotkey) handle() {
 		switch msg.Message {
 		case wmHotkey:
 			hk.keydownIn <- Event{}
-
-			tk := time.NewTicker(time.Second / 100)
-			for range tk.C {
-				if win.GetAsyncKeyState(int(hk.key)) == 0 {
-					hk.keyupIn <- Event{}
-					break
-				}
-			}
+			isKeyDown = true
 		case wmQuit:
 			return
 		}
