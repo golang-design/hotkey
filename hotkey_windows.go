@@ -103,8 +103,8 @@ func (hk *Hotkey) handle() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	tk := time.NewTicker(time.Second / 100)
 	isKeyDown := false
+	tk := time.NewTicker(time.Second / 100)
 	for range tk.C {
 		msg := win.MSG{}
 		if !win.PeekMessage(&msg, 0, 0, 0) {
