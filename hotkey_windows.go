@@ -114,7 +114,7 @@ func (hk *Hotkey) handle() {
 			case <-hk.canceled:
 				return
 			default:
-				// if the latest status is KeyDown, and AsyncKeyState is 0, consider key is up.
+				// If the latest status is KeyDown, and AsyncKeyState is 0, consider key is up.
 				if win.GetAsyncKeyState(int(hk.key)) == 0 && isKeyDown {
 					hk.keyupIn <- Event{}
 					isKeyDown = false
