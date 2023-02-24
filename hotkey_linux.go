@@ -12,9 +12,14 @@ package hotkey
 #cgo LDFLAGS: -lX11
 
 #include <stdint.h>
+#include <X11/Xlib.h>
 
 int displayTest();
-int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key);
+Display *openDisplay();
+Window createInvisWindow(Display *d);
+void sendCancel(Display *d, Window window);
+void cleanupConnection(Display *d, Window window);
+int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key, Display *d, Window w);
 */
 import "C"
 import (
@@ -50,6 +55,8 @@ type platformHotkey struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	canceled   chan struct{}
+	display    *C.Display
+	window     C.Window
 }
 
 // Nothing needs to do for register
@@ -76,6 +83,9 @@ func (hk *Hotkey) unregister() error {
 		return errors.New("hotkey is not registered.")
 	}
 	hk.cancel()
+	if hk.display != nil {
+		C.sendCancel(hk.display, hk.window)
+	}
 	hk.registered = false
 	<-hk.canceled
 	return nil
@@ -88,22 +98,30 @@ func (hk *Hotkey) handle() {
 	defer runtime.UnlockOSThread()
 	// KNOWN ISSUE: if a hotkey is grabbed by others, C side will crash the program
 
+	hk.display = C.openDisplay()
+	hk.window = C.createInvisWindow(hk.display)
+
 	var mod Modifier
 	for _, m := range hk.mods {
 		mod = mod | m
 	}
 	h := cgo.NewHandle(hk)
 	defer h.Delete()
-
+	defer hk.cleanConnection()
 	for {
 		select {
 		case <-hk.ctx.Done():
 			close(hk.canceled)
 			return
 		default:
-			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key))
+			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key), hk.display, hk.window)
 		}
 	}
+}
+
+func (hk *Hotkey) cleanConnection() {
+	C.cleanupConnection(hk.display, hk.window)
+	hk.display = nil
 }
 
 //export hotkeyDown
