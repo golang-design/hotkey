@@ -12,7 +12,7 @@ package mainthread
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Cocoa
 #import <Cocoa/Cocoa.h>
-#import <Dispatch/Dispatch.h>
+#import <dispatch/dispatch.h>
 
 extern void os_main(void);
 extern void wakeupMainThread(void);
