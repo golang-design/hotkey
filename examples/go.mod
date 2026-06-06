@@ -1,6 +1,6 @@
 module golang.design/x/hotkey/examples
 
-go 1.19
+go 1.24
 
 require (
 	fyne.io/fyne/v2 v2.3.0
