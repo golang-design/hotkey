@@ -4,7 +4,7 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-//go:build windows || linux || (darwin && !cgo)
+//go:build windows || linux || openbsd || (darwin && !cgo)
 
 package mainthread
 
