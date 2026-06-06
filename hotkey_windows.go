@@ -223,3 +223,16 @@ const (
 	KeyF19 Key = 0x82
 	KeyF20 Key = 0x83
 )
+
+// Media keys. These are Windows virtual-key codes
+// (https://learn.microsoft.com/windows/win32/inputdev/virtual-key-codes) and
+// are registered through the same RegisterHotKey path as any other key.
+const (
+	KeyMediaPlayPause Key = 0xB3 // VK_MEDIA_PLAY_PAUSE
+	KeyMediaNext      Key = 0xB0 // VK_MEDIA_NEXT_TRACK
+	KeyMediaPrev      Key = 0xB1 // VK_MEDIA_PREV_TRACK
+	KeyMediaStop      Key = 0xB2 // VK_MEDIA_STOP
+	KeyVolumeUp       Key = 0xAF // VK_VOLUME_UP
+	KeyVolumeDown     Key = 0xAE // VK_VOLUME_DOWN
+	KeyVolumeMute     Key = 0xAD // VK_VOLUME_MUTE
+)
