@@ -23,6 +23,9 @@ import (
 // Ctrl+Shift+S
 // Ctrl+Option+S
 func TestHotkey(t *testing.T) {
+	if !hotkey.AXTrusted() {
+		t.Skip("skipping: process is not trusted for Accessibility (Input Monitoring); grant permission to run this test")
+	}
 	tt := time.Second * 5
 	done := make(chan struct{}, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), tt)

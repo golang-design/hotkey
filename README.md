@@ -57,6 +57,10 @@ Note platform specific details:
   is possible. It is uncessary or applications based on other GUI frameworks,
   such as fyne, ebiten, or Gio. See the "[./examples](./examples)" folder
   for more examples.
+- On macOS, hotkeys are delivered through a CGEventTap, which requires the
+  application to be trusted for Accessibility (Input Monitoring). Without
+  that permission, `Register` returns an error; grant it in System Settings
+  → Privacy & Security → Accessibility.
 - On Linux (X11), when AutoRepeat is enabled in the X server, the Keyup
   is triggered automatically and continuously as Keydown continues.
 - On Linux (X11), some keys may be mapped to multiple Mod keys. To
