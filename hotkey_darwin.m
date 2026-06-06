@@ -7,6 +7,7 @@
 //go:build darwin
 
 #include <stdint.h>
+#import <ApplicationServices/ApplicationServices.h>
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 extern void keydownCallback(uintptr_t handle);
@@ -116,6 +117,13 @@ static CGEventRef mediaTapCallback(CGEventTapProxy proxy, CGEventType type,
 // Returns NULL on failure, most commonly because the application has not been
 // granted Accessibility (Input Monitoring) permission.
 void* registerMediaTap(uintptr_t handle, int nxKeyCode) {
+	// A keyboard event tap requires Accessibility (Input Monitoring) trust.
+	// Check explicitly: CGEventTapCreate can otherwise return a non-NULL but
+	// inert tap when untrusted, which would look like success but never fire.
+	if (!AXIsProcessTrusted()) {
+		return NULL;
+	}
+
 	mediaTap *mt = malloc(sizeof(mediaTap));
 	mt->handle = handle;
 	mt->nxKeyCode = nxKeyCode;
