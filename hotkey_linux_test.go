@@ -17,6 +17,26 @@ import (
 	"golang.design/x/hotkey"
 )
 
+// TestKeycodesAreDistinct guards against duplicated keysym constants.
+// KeyTab used to alias KeyEscape (both 0xff1b), which made Tab hotkeys
+// register Escape instead.
+func TestKeycodesAreDistinct(t *testing.T) {
+	keys := map[string]hotkey.Key{
+		"KeySpace": hotkey.KeySpace, "KeyReturn": hotkey.KeyReturn,
+		"KeyEscape": hotkey.KeyEscape, "KeyDelete": hotkey.KeyDelete,
+		"KeyTab":  hotkey.KeyTab,
+		"KeyLeft": hotkey.KeyLeft, "KeyRight": hotkey.KeyRight,
+		"KeyUp": hotkey.KeyUp, "KeyDown": hotkey.KeyDown,
+	}
+	seen := map[hotkey.Key]string{}
+	for name, code := range keys {
+		if prev, ok := seen[code]; ok {
+			t.Errorf("key %s and %s share the same keycode 0x%x", prev, name, code)
+		}
+		seen[code] = name
+	}
+}
+
 // TestHotkey should always run success.
 // This is a test to run and for manually testing, registered combination:
 // Ctrl+Alt+A (Ctrl+Mod2+Mod4+A on Linux)
