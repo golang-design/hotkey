@@ -81,7 +81,6 @@ jobs:
         target:
           - linux/386
           - linux/arm
-          - darwin/amd64
           - windows/386
           - openbsd/amd64
           - freebsd/amd64
