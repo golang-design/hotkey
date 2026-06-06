@@ -24,8 +24,8 @@ jobs:
         os:
           - ubuntu-latest       # linux/amd64
           - ubuntu-24.04-arm    # linux/arm64
-          - macos-13            # darwin/amd64
-          - macos-latest        # darwin/arm64
+          - macos-15            # darwin/arm64 (macOS 15 Sequoia)
+          - macos-26            # darwin/arm64 (macOS 26 Tahoe)
           - windows-latest      # windows/amd64
           - windows-11-arm      # windows/arm64
     steps:
