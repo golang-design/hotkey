@@ -4,7 +4,7 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-//go:build linux && cgo
+//go:build (linux || openbsd) && cgo
 
 package hotkey_test
 

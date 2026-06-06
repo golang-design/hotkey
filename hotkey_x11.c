@@ -4,7 +4,7 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-//go:build linux
+//go:build linux || openbsd
 
 #include <stdint.h>
 #include <stdio.h>

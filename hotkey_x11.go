@@ -4,12 +4,14 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-//go:build linux
+//go:build linux || openbsd
 
 package hotkey
 
 /*
 #cgo LDFLAGS: -lX11
+#cgo openbsd CFLAGS: -I/usr/X11R6/include
+#cgo openbsd LDFLAGS: -L/usr/X11R6/lib -lX11
 
 #include <stdint.h>
 
