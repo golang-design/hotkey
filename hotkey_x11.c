@@ -96,23 +96,48 @@ void cleanupConnection(Display *d, Window w) {
   XCloseDisplay(d);
 }
 
-// waitHotkey blocks until the hotkey is triggered or canceled.
-//
-// mods points to nmods modifier masks: the same hotkey is grabbed once per
-// mask so that it still fires while NumLock/CapsLock are active (those locks
-// add bits to the event state that an exact-mask grab would not match).
-//
-// d is an owned display connection and w an invisible window on it; sending w
-// a ClientMessage (see sendCancel) breaks the loop out of XNextEvent so an
-// unregister can take effect without waiting for the next keypress.
-int waitHotkey(uintptr_t hkhandle, unsigned int *mods, int nmods, int key,
-               Display *d, Window w) {
+// lastGrabError records the X error code raised during the most recent
+// grabHotkey call (0 if none). grabHotkey is serialized on the Go side, so a
+// single global slot is sufficient.
+static int lastGrabError = 0;
+
+int grabErrorHandler(Display *d, XErrorEvent *e) {
+  lastGrabError = e->error_code;
+  return 0;
+}
+
+// grabHotkey grabs key on display d once per modifier mask in mods (the
+// NumLock/CapsLock variants). It installs a temporary error handler and
+// XSyncs so that a BadAccess -- the combination is already grabbed by another
+// client -- is reported synchronously instead of terminating the program via
+// Xlib's default handler. Returns 0 on success, 1 if the combination is
+// unavailable. Callers must serialize this (it uses a process-global error
+// slot and swaps the process-global X error handler).
+int grabHotkey(Display *d, unsigned int *mods, int nmods, int key) {
+  lastGrabError = 0;
   int keycode = XKeysymToKeycode(d, key);
+  XErrorHandler old = XSetErrorHandler(grabErrorHandler);
   for (int i = 0; i < nmods; i++) {
     XGrabKey(d, keycode, mods[i], DefaultRootWindow(d), False, GrabModeAsync,
              GrabModeAsync);
   }
+  XSync(d, False); // force the server to deliver any grab error to our handler
+  XSetErrorHandler(old);
+  if (lastGrabError == BadAccess) {
+    for (int i = 0; i < nmods; i++) {
+      XUngrabKey(d, keycode, mods[i], DefaultRootWindow(d));
+    }
+    return 1;
+  }
   XSelectInput(d, DefaultRootWindow(d), KeyPressMask);
+  return 0;
+}
+
+// waitHotkey delivers key events on display d until a cancel ClientMessage
+// (see sendCancel) breaks the loop out of XNextEvent so an unregister can take
+// effect without waiting for the next keypress. The grab is established once
+// by grabHotkey and held until cleanupConnection.
+void waitHotkey(uintptr_t hkhandle, Display *d) {
   XEvent ev;
   while (1) {
     XNextEvent(d, &ev);
@@ -122,12 +147,9 @@ int waitHotkey(uintptr_t hkhandle, unsigned int *mods, int nmods, int key,
       continue;
     case KeyRelease:
       hotkeyUp(hkhandle);
-      for (int i = 0; i < nmods; i++) {
-        XUngrabKey(d, keycode, mods[i], DefaultRootWindow(d));
-      }
-      return 0;
+      continue;
     case ClientMessage:
-      return 0;
+      return;
     }
   }
 }

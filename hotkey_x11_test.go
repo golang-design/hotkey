@@ -37,6 +37,23 @@ func TestKeycodesAreDistinct(t *testing.T) {
 	}
 }
 
+// TestRegisterConflict verifies that registering a key combination already
+// grabbed by another X client returns an error instead of crashing the
+// process via Xlib's default BadAccess handler (issue #11).
+func TestRegisterConflict(t *testing.T) {
+	hk1 := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyF8)
+	if err := hk1.Register(); err != nil {
+		t.Fatalf("first registration failed: %v", err)
+	}
+	defer hk1.Unregister()
+
+	hk2 := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyF8)
+	if err := hk2.Register(); err == nil {
+		hk2.Unregister()
+		t.Fatal("registering an already-grabbed hotkey should return an error, got nil")
+	}
+}
+
 // TestHotkey should always run success.
 // This is a test to run and for manually testing, registered combination:
 // Ctrl+Alt+A (Ctrl+Mod2+Mod4+A on Linux)
@@ -50,6 +67,9 @@ func TestHotkey(t *testing.T) {
 		t.Errorf("failed to register hotkey: %v", err)
 		return
 	}
+	// Release the grab on return; otherwise it would leak and conflict with
+	// later tests that register the same combination.
+	defer hk.Unregister()
 	for {
 		select {
 		case <-ctx.Done():

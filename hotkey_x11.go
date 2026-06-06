@@ -21,7 +21,8 @@ Display *openDisplay();
 Window createInvisWindow(Display *d);
 void sendCancel(Display *d, Window window);
 void cleanupConnection(Display *d, Window window);
-int waitHotkey(uintptr_t hkhandle, unsigned int* mods, int nmods, int key, Display *d, Window w);
+int grabHotkey(Display *d, unsigned int* mods, int nmods, int key);
+void waitHotkey(uintptr_t hkhandle, Display *d);
 */
 import "C"
 import (
@@ -46,6 +47,11 @@ Then this package should be ready to use.
 `
 
 func init() {
+	// The X11 display is touched from multiple threads (register opens it and
+	// grabs, the per-hotkey event loop blocks in XNextEvent, and unregister
+	// sends the cancel event), so Xlib must be made thread-safe before the
+	// first Xlib call.
+	C.XInitThreads()
 	if C.displayTest() != 0 {
 		panic(errmsg)
 	}
@@ -61,23 +67,56 @@ type platformHotkey struct {
 	window     C.Window
 }
 
-// Nothing needs to do for register
+// grabMu serializes the grab in register across hotkeys, because the C side
+// uses a process-global error slot and swaps the process-global X error
+// handler while probing for a conflict.
+var grabMu sync.Mutex
+
 func (hk *Hotkey) register() error {
 	hk.mu.Lock()
+	defer hk.mu.Unlock()
 	if hk.registered {
-		hk.mu.Unlock()
 		return errors.New("hotkey already registered.")
 	}
+
+	var mod Modifier
+	for _, m := range hk.mods {
+		mod = mod | m
+	}
+	// Grab the hotkey once per NumLock/CapsLock state so it fires regardless
+	// of those locks (see lockVariants).
+	variants := lockVariants(mod)
+	cmods := make([]C.uint, len(variants))
+	for i, v := range variants {
+		cmods[i] = C.uint(v)
+	}
+
+	display := C.openDisplay()
+	if display == nil {
+		return errors.New("hotkey: failed to open the X11 display.")
+	}
+	window := C.createInvisWindow(display)
+
+	// Grab synchronously so a conflict surfaces here as an error instead of
+	// crashing the program later via Xlib's default error handler.
+	grabMu.Lock()
+	rc := C.grabHotkey(display, &cmods[0], C.int(len(cmods)), C.int(hk.key))
+	grabMu.Unlock()
+	if rc != 0 {
+		C.cleanupConnection(display, window)
+		return errors.New("hotkey: the key combination is already registered by another application.")
+	}
+
+	hk.display = display
+	hk.window = window
 	hk.registered = true
 	hk.ctx, hk.cancel = context.WithCancel(context.Background())
 	hk.canceled = make(chan struct{})
-	hk.mu.Unlock()
 
 	go hk.handle()
 	return nil
 }
 
-// Nothing needs to do for unregister
 func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
@@ -85,39 +124,25 @@ func (hk *Hotkey) unregister() error {
 		return errors.New("hotkey is not registered.")
 	}
 	hk.cancel()
-	if hk.display != nil {
-		C.sendCancel(hk.display, hk.window)
-	}
-	hk.registered = false
+	C.sendCancel(hk.display, hk.window)
 	<-hk.canceled
+	// Tear down the connection only after the event loop has returned, so the
+	// XDestroyWindow/XCloseDisplay cannot race the sendCancel above (which
+	// would destroy the window out from under the in-flight XSendEvent).
+	C.cleanupConnection(hk.display, hk.window)
+	hk.display = nil
+	hk.registered = false
 	return nil
 }
 
-// handle registers an application global hotkey to the system,
-// and returns a channel that will signal if the hotkey is triggered.
+// handle delivers events for an already-registered (and grabbed) hotkey until
+// it is unregistered.
 func (hk *Hotkey) handle() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	// KNOWN ISSUE: if a hotkey is grabbed by others, C side will crash the program
 
-	hk.display = C.openDisplay()
-	hk.window = C.createInvisWindow(hk.display)
-
-	var mod Modifier
-	for _, m := range hk.mods {
-		mod = mod | m
-	}
 	h := cgo.NewHandle(hk)
 	defer h.Delete()
-	defer hk.cleanConnection()
-
-	// Grab the hotkey once per NumLock/CapsLock state so it fires
-	// regardless of those locks (see lockVariants).
-	variants := lockVariants(mod)
-	cmods := make([]C.uint, len(variants))
-	for i, v := range variants {
-		cmods[i] = C.uint(v)
-	}
 
 	for {
 		select {
@@ -125,14 +150,9 @@ func (hk *Hotkey) handle() {
 			close(hk.canceled)
 			return
 		default:
-			_ = C.waitHotkey(C.uintptr_t(h), &cmods[0], C.int(len(cmods)), C.int(hk.key), hk.display, hk.window)
+			C.waitHotkey(C.uintptr_t(h), hk.display)
 		}
 	}
-}
-
-func (hk *Hotkey) cleanConnection() {
-	C.cleanupConnection(hk.display, hk.window)
-	hk.display = nil
 }
 
 // X11 lock modifier masks (see /usr/include/X11/X.h).
