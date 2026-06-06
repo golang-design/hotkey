@@ -14,7 +14,7 @@ package hotkey
 #include <stdint.h>
 
 int displayTest();
-int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key);
+int waitHotkey(uintptr_t hkhandle, unsigned int* mods, int nmods, int key);
 */
 import "C"
 import (
@@ -95,15 +95,48 @@ func (hk *Hotkey) handle() {
 	h := cgo.NewHandle(hk)
 	defer h.Delete()
 
+	// Grab the hotkey once per NumLock/CapsLock state so it fires
+	// regardless of those locks (see lockVariants).
+	variants := lockVariants(mod)
+	cmods := make([]C.uint, len(variants))
+	for i, v := range variants {
+		cmods[i] = C.uint(v)
+	}
+
 	for {
 		select {
 		case <-hk.ctx.Done():
 			close(hk.canceled)
 			return
 		default:
-			_ = C.waitHotkey(C.uintptr_t(h), C.uint(mod), C.int(hk.key))
+			_ = C.waitHotkey(C.uintptr_t(h), &cmods[0], C.int(len(cmods)), C.int(hk.key))
 		}
 	}
+}
+
+// X11 lock modifier masks (see /usr/include/X11/X.h).
+const (
+	x11LockMask Modifier = 1 << 1 // CapsLock
+	x11Mod2Mask Modifier = 1 << 4 // usually NumLock
+)
+
+// lockVariants returns mod combined with every on/off combination of the
+// CapsLock and NumLock masks, deduplicated. An XGrabKey uses an exact
+// modifier mask, so without these variants a hotkey would stop firing
+// whenever NumLock or CapsLock is toggled on. Duplicates are removed so we
+// never grab the same key+mask twice (which itself raises BadAccess).
+func lockVariants(mod Modifier) []uint32 {
+	extra := []Modifier{0, x11LockMask, x11Mod2Mask, x11LockMask | x11Mod2Mask}
+	seen := make(map[uint32]bool, len(extra))
+	out := make([]uint32, 0, len(extra))
+	for _, e := range extra {
+		v := uint32(mod | e)
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 //export hotkeyDown
