@@ -64,8 +64,17 @@
 package hotkey
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
+)
+
+// Errors reported by Register and Unregister. They are shared across all
+// platforms so the message is identical regardless of the operating system.
+var (
+	errAlreadyRegistered = errors.New("hotkey: already registered")
+	errNotRegistered     = errors.New("hotkey: not registered")
+	errRegisterFailed    = errors.New("hotkey: failed to register, the combination might already be taken by another application")
 )
 
 // Event represents a hotkey event

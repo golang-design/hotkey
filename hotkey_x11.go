@@ -76,7 +76,7 @@ func (hk *Hotkey) register() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
 	if hk.registered {
-		return errors.New("hotkey already registered.")
+		return errAlreadyRegistered
 	}
 
 	var mod Modifier
@@ -93,7 +93,7 @@ func (hk *Hotkey) register() error {
 
 	display := C.openDisplay()
 	if display == nil {
-		return errors.New("hotkey: failed to open the X11 display.")
+		return errors.New("hotkey: failed to open the X11 display")
 	}
 	window := C.createInvisWindow(display)
 
@@ -104,7 +104,7 @@ func (hk *Hotkey) register() error {
 	grabMu.Unlock()
 	if rc != 0 {
 		C.cleanupConnection(display, window)
-		return errors.New("hotkey: the key combination is already registered by another application.")
+		return errRegisterFailed
 	}
 
 	hk.display = display
@@ -121,7 +121,7 @@ func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
 	if !hk.registered {
-		return errors.New("hotkey is not registered.")
+		return errNotRegistered
 	}
 	hk.cancel()
 	C.sendCancel(hk.display, hk.window)
