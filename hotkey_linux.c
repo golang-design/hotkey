@@ -47,7 +47,11 @@ int displayTest() {
 
 // waitHotkey blocks until the hotkey is triggered.
 // this function crashes the program if the hotkey already grabbed by others.
-int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key) {
+//
+// mods points to nmods modifier masks: the same hotkey is grabbed once per
+// mask so that it still fires while NumLock/CapsLock are active (those locks
+// add bits to the event state that an exact-mask grab would not match).
+int waitHotkey(uintptr_t hkhandle, unsigned int* mods, int nmods, int key) {
 	Display* d = NULL;
 	for (int i = 0; i < 42; i++) {
 		d = XOpenDisplay(0);
@@ -58,7 +62,9 @@ int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key) {
 		return -1;
 	}
 	int keycode = XKeysymToKeycode(d, key);
-	XGrabKey(d, keycode, mod, DefaultRootWindow(d), False, GrabModeAsync, GrabModeAsync);
+	for (int i = 0; i < nmods; i++) {
+		XGrabKey(d, keycode, mods[i], DefaultRootWindow(d), False, GrabModeAsync, GrabModeAsync);
+	}
 	XSelectInput(d, DefaultRootWindow(d), KeyPressMask);
 	XEvent ev;
 	while(1) {
@@ -69,7 +75,9 @@ int waitHotkey(uintptr_t hkhandle, unsigned int mod, int key) {
 			continue;
 		case KeyRelease:
 			hotkeyUp(hkhandle);
-			XUngrabKey(d, keycode, mod, DefaultRootWindow(d));
+			for (int i = 0; i < nmods; i++) {
+				XUngrabKey(d, keycode, mods[i], DefaultRootWindow(d));
+			}
 			XCloseDisplay(d);
 			return 0;
 		}
