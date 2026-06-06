@@ -99,3 +99,23 @@ jobs:
           export GOARCH=${TARGET#*/}
           echo "Building for $GOOS/$GOARCH"
           CGO_ENABLED=0 go build -v ./...
+
+  # Real OpenBSD run inside a VM. This exercises the X11 cgo build/link path
+  # (libX11 lives under /usr/X11R6 in the OpenBSD base system) that the
+  # CGO_ENABLED=0 cross-build job cannot validate. The hotkey runtime tests
+  # need an X server, so here we compile- and vet-check with cgo enabled.
+  openbsd:
+    name: openbsd (X11, cgo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and vet on OpenBSD
+        uses: vmactions/openbsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg_add -I go
+          run: |
+            go version
+            CGO_ENABLED=1 go build -v ./...
+            CGO_ENABLED=1 go vet ./...

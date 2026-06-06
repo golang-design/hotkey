@@ -4,7 +4,7 @@
 //
 // Written by Changkun Ou <changkun.de>
 
-//go:build linux
+//go:build linux || openbsd
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
