@@ -209,7 +209,7 @@ const (
 
 // Key represents a key.
 // See /usr/include/X11/keysymdef.h
-type Key uint16
+type Key uint32
 
 // All kinds of keys
 const (

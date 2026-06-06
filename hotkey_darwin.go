@@ -101,7 +101,7 @@ const (
 
 // Key represents a key.
 // See: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/Headers/Events.h
-type Key uint8
+type Key uint32
 
 // All kinds of keys
 const (

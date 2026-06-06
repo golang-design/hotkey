@@ -14,7 +14,7 @@ type platformHotkey struct{}
 type Modifier uint32
 
 // Key represents a key.
-type Key uint8
+type Key uint32
 
 func (hk *Hotkey) register() error {
 	panic("hotkey: cannot use when CGO_ENABLED=0")

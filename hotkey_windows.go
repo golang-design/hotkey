@@ -150,7 +150,7 @@ const (
 
 // Key represents a key.
 // https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-type Key uint16
+type Key uint32
 
 // All kinds of Keys
 const (
