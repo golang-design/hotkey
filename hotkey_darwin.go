@@ -10,20 +10,19 @@ package hotkey
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework CoreGraphics -framework ApplicationServices
+#cgo LDFLAGS: -framework Cocoa -framework CoreGraphics -framework ApplicationServices
 #include <stdint.h>
 #import <Cocoa/Cocoa.h>
-#import <Carbon/Carbon.h>
 
 extern void keydownCallback(uintptr_t handle);
 extern void keyupCallback(uintptr_t handle);
-int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref);
-int unregisterHotKey(EventHotKeyRef ref);
 
-// Media keys are not delivered through Carbon hot keys; they arrive as
-// NSSystemDefined events, captured here with a CGEventTap.
-void* registerMediaTap(uintptr_t handle, int nxKeyCode);
-void unregisterMediaTap(void* tap);
+// All hotkeys are delivered through a CGEventTap (regular keys and media
+// keys alike), so a single mechanism handles both. registerTap returns NULL
+// when the process lacks Accessibility (Input Monitoring) permission.
+void* registerTap(uintptr_t handle, int isMedia, int code, uint64_t flags);
+void unregisterTap(void* tap);
+int isAXTrusted();
 */
 import "C"
 import (
@@ -33,16 +32,26 @@ import (
 	"unsafe"
 )
 
-// Hotkey is a combination of modifiers and key to trigger an event
+// Hotkey is a combination of modifiers and key to trigger an event.
+//
+// On macOS every hotkey is served by a CGEventTap, which requires the
+// application to be trusted for Accessibility (Input Monitoring). Register
+// returns an error when that permission is missing.
 type platformHotkey struct {
 	mu         sync.Mutex
 	registered bool
-	hkref      C.EventHotKeyRef
-
-	// media-key registrations use a CGEventTap instead of a Carbon hot key.
-	mediaTap    unsafe.Pointer
-	mediaHandle cgo.Handle
+	tap        unsafe.Pointer
+	handle     cgo.Handle
 }
+
+// CGEventFlags modifier masks (see CGEventTypes.h), mapped from the package's
+// Carbon-style Modifier values.
+const (
+	cgFlagShift   = 0x20000
+	cgFlagControl = 0x40000
+	cgFlagOption  = 0x80000
+	cgFlagCommand = 0x100000
+)
 
 func (hk *Hotkey) register() error {
 	hk.mu.Lock()
@@ -51,47 +60,44 @@ func (hk *Hotkey) register() error {
 		return errAlreadyRegistered
 	}
 
+	var (
+		isMedia C.int
+		code    C.int
+		flags   C.uint64_t
+	)
 	if hk.key&mediaKeyBit != 0 {
-		return hk.registerMedia()
+		if hk.key == KeyMediaStop {
+			// There is no NX_KEYTYPE for media stop on macOS.
+			return errors.New("hotkey: media stop is not available on macOS")
+		}
+		isMedia = 1
+		code = C.int(hk.key &^ mediaKeyBit)
+	} else {
+		code = C.int(hk.key)
+		var f C.uint64_t
+		for _, m := range hk.mods {
+			switch m {
+			case ModCmd:
+				f |= cgFlagCommand
+			case ModShift:
+				f |= cgFlagShift
+			case ModOption:
+				f |= cgFlagOption
+			case ModCtrl:
+				f |= cgFlagControl
+			}
+		}
+		flags = f
 	}
-
-	// Note: we use handle number as hotkey id in the C side.
-	// A cgo handle could ran out of space, but since in hotkey purpose
-	// we won't have that much number of hotkeys. So this should be fine.
 
 	h := cgo.NewHandle(hk)
-	var mod Modifier
-	for _, m := range hk.mods {
-		mod += m
-	}
-
-	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
-	if ret == C.int(-1) {
-		return errRegisterFailed
-	}
-
-	hk.registered = true
-	return nil
-}
-
-// registerMedia registers a media key via a CGEventTap. Must be called with
-// hk.mu held.
-func (hk *Hotkey) registerMedia() error {
-	if hk.key == KeyMediaStop {
-		// There is no NX_KEYTYPE for media stop on macOS.
-		return errors.New("hotkey: media stop is not available on macOS")
-	}
-	nx := C.int(hk.key &^ mediaKeyBit)
-	h := cgo.NewHandle(hk)
-	tap := C.registerMediaTap(C.uintptr_t(h), nx)
+	tap := C.registerTap(C.uintptr_t(h), isMedia, code, flags)
 	if tap == nil {
 		h.Delete()
-		// CGEventTapCreate returns NULL without Accessibility/Input Monitoring
-		// permission.
-		return errors.New("hotkey: failed to register media key, grant the application Accessibility (Input Monitoring) permission")
+		return errors.New("hotkey: failed to register, grant the application Accessibility (Input Monitoring) permission")
 	}
-	hk.mediaTap = tap
-	hk.mediaHandle = h
+	hk.tap = tap
+	hk.handle = h
 	hk.registered = true
 	return nil
 }
@@ -102,22 +108,17 @@ func (hk *Hotkey) unregister() error {
 	if !hk.registered {
 		return errNotRegistered
 	}
-
-	if hk.mediaTap != nil {
-		C.unregisterMediaTap(hk.mediaTap)
-		hk.mediaTap = nil
-		hk.mediaHandle.Delete()
-		hk.registered = false
-		return nil
-	}
-
-	ret := C.unregisterHotKey(hk.hkref)
-	if ret == C.int(-1) {
-		return errors.New("hotkey: failed to unregister")
-	}
+	C.unregisterTap(hk.tap)
+	hk.tap = nil
+	hk.handle.Delete()
 	hk.registered = false
 	return nil
 }
+
+// axTrusted reports whether the process is trusted for Accessibility (Input
+// Monitoring). It is used by tests to skip when the environment cannot grant
+// permission (e.g. CI runners).
+func axTrusted() bool { return C.isAXTrusted() != 0 }
 
 //export keydownCallback
 func keydownCallback(h uintptr) {
