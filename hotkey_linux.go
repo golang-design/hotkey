@@ -180,7 +180,7 @@ const (
 	KeyReturn Key = 0xff0d
 	KeyEscape Key = 0xff1b
 	KeyDelete Key = 0xffff
-	KeyTab    Key = 0xff1b
+	KeyTab    Key = 0xff09
 
 	KeyLeft  Key = 0xff51
 	KeyRight Key = 0xff53
