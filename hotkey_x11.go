@@ -117,7 +117,6 @@ func (hk *Hotkey) register() error {
 	return nil
 }
 
-// Nothing needs to do for unregister
 func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
@@ -125,11 +124,14 @@ func (hk *Hotkey) unregister() error {
 		return errors.New("hotkey is not registered.")
 	}
 	hk.cancel()
-	if hk.display != nil {
-		C.sendCancel(hk.display, hk.window)
-	}
-	hk.registered = false
+	C.sendCancel(hk.display, hk.window)
 	<-hk.canceled
+	// Tear down the connection only after the event loop has returned, so the
+	// XDestroyWindow/XCloseDisplay cannot race the sendCancel above (which
+	// would destroy the window out from under the in-flight XSendEvent).
+	C.cleanupConnection(hk.display, hk.window)
+	hk.display = nil
+	hk.registered = false
 	return nil
 }
 
@@ -141,7 +143,6 @@ func (hk *Hotkey) handle() {
 
 	h := cgo.NewHandle(hk)
 	defer h.Delete()
-	defer hk.cleanConnection()
 
 	for {
 		select {
@@ -152,11 +153,6 @@ func (hk *Hotkey) handle() {
 			C.waitHotkey(C.uintptr_t(h), hk.display)
 		}
 	}
-}
-
-func (hk *Hotkey) cleanConnection() {
-	C.cleanupConnection(hk.display, hk.window)
-	hk.display = nil
 }
 
 // X11 lock modifier masks (see /usr/include/X11/X.h).
