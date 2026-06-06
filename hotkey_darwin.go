@@ -38,7 +38,7 @@ func (hk *Hotkey) register() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
 	if hk.registered {
-		return errors.New("hotkey already registered")
+		return errAlreadyRegistered
 	}
 
 	// Note: we use handle number as hotkey id in the C side.
@@ -53,7 +53,7 @@ func (hk *Hotkey) register() error {
 
 	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
 	if ret == C.int(-1) {
-		return errors.New("failed to register the hotkey")
+		return errRegisterFailed
 	}
 
 	hk.registered = true
@@ -64,12 +64,12 @@ func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
 	if !hk.registered {
-		return errors.New("hotkey is not registered")
+		return errNotRegistered
 	}
 
 	ret := C.unregisterHotKey(hk.hkref)
 	if ret == C.int(-1) {
-		return errors.New("failed to unregister the current hotkey")
+		return errors.New("hotkey: failed to unregister")
 	}
 	hk.registered = false
 	return nil

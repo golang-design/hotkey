@@ -9,7 +9,7 @@
 package hotkey
 
 import (
-	"errors"
+	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -35,7 +35,7 @@ func (hk *Hotkey) register() error {
 	hk.mu.Lock()
 	if hk.registered {
 		hk.mu.Unlock()
-		return errors.New("hotkey already registered")
+		return errAlreadyRegistered
 	}
 
 	mod := uint8(0)
@@ -61,7 +61,7 @@ func (hk *Hotkey) register() error {
 	if !ok {
 		close(hk.canceled)
 		hk.mu.Unlock()
-		return err
+		return fmt.Errorf("%w: %v", errRegisterFailed, err)
 	}
 	hk.registered = true
 	hk.mu.Unlock()
@@ -73,7 +73,7 @@ func (hk *Hotkey) unregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
 	if !hk.registered {
-		return errors.New("hotkey is not registered")
+		return errNotRegistered
 	}
 
 	done := make(chan struct{})
