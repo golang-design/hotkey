@@ -282,3 +282,16 @@ const (
 	KeyF19 Key = 0xffd0
 	KeyF20 Key = 0xffd1
 )
+
+// Media keys. These are X11 XF86 keysyms (see
+// /usr/include/X11/XF86keysym.h) and are grabbed through the same path as
+// any other key.
+const (
+	KeyMediaPlayPause Key = 0x1008FF14 // XF86AudioPlay
+	KeyMediaNext      Key = 0x1008FF17 // XF86AudioNext
+	KeyMediaPrev      Key = 0x1008FF16 // XF86AudioPrev
+	KeyMediaStop      Key = 0x1008FF15 // XF86AudioStop
+	KeyVolumeUp       Key = 0x1008FF13 // XF86AudioRaiseVolume
+	KeyVolumeDown     Key = 0x1008FF11 // XF86AudioLowerVolume
+	KeyVolumeMute     Key = 0x1008FF12 // XF86AudioMute
+)
