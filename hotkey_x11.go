@@ -47,6 +47,11 @@ Then this package should be ready to use.
 `
 
 func init() {
+	// The X11 display is touched from multiple threads (register opens it and
+	// grabs, the per-hotkey event loop blocks in XNextEvent, and unregister
+	// sends the cancel event), so Xlib must be made thread-safe before the
+	// first Xlib call.
+	C.XInitThreads()
 	if C.displayTest() != 0 {
 		panic(errmsg)
 	}
