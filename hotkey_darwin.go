@@ -23,6 +23,7 @@ extern void keyupCallback(uintptr_t handle);
 void* registerTap(uintptr_t handle, int isMedia, int code, uint64_t flags);
 void unregisterTap(void* tap);
 int isAXTrusted();
+int onMainProbe();
 */
 import "C"
 import (
@@ -119,6 +120,10 @@ func (hk *Hotkey) unregister() error {
 // Monitoring). It is used by tests to skip when the environment cannot grant
 // permission (e.g. CI runners).
 func axTrusted() bool { return C.isAXTrusted() != 0 }
+
+// onMainProbe reports whether work meant for the main thread runs when
+// asked for from the main thread itself.
+func onMainProbe() bool { return C.onMainProbe() != 0 }
 
 //export keydownCallback
 func keydownCallback(h uintptr) {

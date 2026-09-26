@@ -9,3 +9,6 @@ package hotkey
 // AXTrusted exposes axTrusted to tests so they can skip when the process is
 // not trusted for Accessibility (e.g. on CI runners).
 var AXTrusted = axTrusted
+
+// OnMainProbe exposes onMainProbe to tests.
+var OnMainProbe = onMainProbe
