@@ -15,7 +15,35 @@ import (
 	"time"
 
 	"golang.design/x/hotkey"
+	"golang.design/x/hotkey/mainthread"
 )
+
+// TestOnMainFromTheMainThread: Register and Unregister do their work on the
+// main thread, and asked from the main thread itself they used to wait for
+// it forever, which libdispatch traps: the process crashed. Unlike the
+// hotkey tests, this needs no Accessibility permission.
+func TestOnMainFromTheMainThread(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		call func(func())
+	}{
+		{"from the main thread", mainthread.Call}, // Call does not wait
+		{"from another goroutine", func(f func()) { go f() }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			done := make(chan bool, 1)
+			tt.call(func() { done <- hotkey.OnMainProbe() })
+			select {
+			case ran := <-done:
+				if !ran {
+					t.Fatal("the work did not run")
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("the work never ran")
+			}
+		})
+	}
+}
 
 // TestHotkey should always run success.
 // This is a test to run and for manually testing the registration of multiple

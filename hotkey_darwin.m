@@ -17,6 +17,29 @@ extern void keyupCallback(uintptr_t handle);
 // (Input Monitoring), which a keyboard event tap requires.
 int isAXTrusted() { return AXIsProcessTrusted() ? 1 : 0; }
 
+// onMain runs block on the main thread and waits for it. On the main thread
+// it runs block at once: a dispatch_sync onto the queue one is already on
+// never returns, and libdispatch traps it, which crashed a Register or
+// Unregister called from the main thread, as within a GUI toolkit's event
+// loop or through mainthread.Call.
+static void onMain(dispatch_block_t block) {
+	if ([NSThread isMainThread]) {
+		block();
+		return;
+	}
+	dispatch_sync(dispatch_get_main_queue(), block);
+}
+
+// onMainProbe runs a block through onMain and reports that it ran, for the
+// tests.
+int onMainProbe() {
+	__block int ran = 0;
+	onMain(^{
+		ran = 1;
+	});
+	return ran;
+}
+
 // All hotkeys (regular and media) are delivered through a CGEventTap rather
 // than Carbon RegisterEventHotKey, so a single mechanism handles both and the
 // tap can consume the event. This requires Accessibility (Input Monitoring)
@@ -123,7 +146,7 @@ void* registerTap(uintptr_t handle, int isMedia, int code, uint64_t flags) {
 	t->down = 0;
 	t->tap = NULL;
 	t->source = NULL;
-	dispatch_sync(dispatch_get_main_queue(), ^{
+	onMain(^{
 		CGEventMask mask =
 			isMedia ? CGEventMaskBit(NX_SYSDEFINED)
 			        : (CGEventMaskBit(kCGEventKeyDown) |
@@ -153,7 +176,7 @@ void unregisterTap(void* p) {
 		return;
 	}
 	eventTap *t = (eventTap *)p;
-	dispatch_sync(dispatch_get_main_queue(), ^{
+	onMain(^{
 		if (t->tap != NULL) {
 			CGEventTapEnable(t->tap, false);
 		}
