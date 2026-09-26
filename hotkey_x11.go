@@ -21,7 +21,8 @@ Window createInvisWindow(Display *d);
 void sendCancel(Display *d, Window window);
 void cleanupConnection(Display *d, Window window);
 int grabHotkey(Display *d, unsigned int* mods, int nmods, int key);
-void waitHotkey(uintptr_t hkhandle, Display *d);
+int hotkeyKeycode(Display *d, int key);
+void waitHotkey(uintptr_t hkhandle, Display *d, int keycode, unsigned int mods);
 */
 import "C"
 import (
@@ -54,6 +55,11 @@ type platformHotkey struct {
 	canceled   chan struct{}
 	display    *C.Display
 	window     C.Window
+
+	// keycode and mask identify the registered combination so the event
+	// loop can tell it apart from other keys.
+	keycode C.int
+	mask    C.uint
 }
 
 // errNoDisplay is what register reports without an X server to talk to.
@@ -102,6 +108,8 @@ func (hk *Hotkey) register() error {
 
 	hk.display = display
 	hk.window = window
+	hk.keycode = C.hotkeyKeycode(display, C.int(hk.key))
+	hk.mask = C.uint(mod)
 	hk.registered = true
 	hk.ctx, hk.cancel = context.WithCancel(context.Background())
 	hk.canceled = make(chan struct{})
@@ -143,7 +151,7 @@ func (hk *Hotkey) handle() {
 			close(hk.canceled)
 			return
 		default:
-			C.waitHotkey(C.uintptr_t(h), hk.display)
+			C.waitHotkey(C.uintptr_t(h), hk.display, hk.keycode, hk.mask)
 		}
 	}
 }

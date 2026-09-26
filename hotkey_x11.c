@@ -120,20 +120,48 @@ int grabHotkey(Display *d, unsigned int *mods, int nmods, int key) {
   return 0;
 }
 
+// hotkeyKeycode resolves the keysym key to the keycode grabHotkey grabs, so
+// the caller can filter incoming events against it.
+int hotkeyKeycode(Display *d, int key) { return XKeysymToKeycode(d, key); }
+
+// The lock masks are deliberately absent: grabHotkey registers one variant per
+// NumLock/CapsLock state, so only the real modifiers take part in a match.
+#define HOTKEY_MOD_MASK                                                        \
+  (ShiftMask | ControlMask | Mod1Mask | Mod3Mask | Mod4Mask)
+
+// matchesHotkey reports whether a key event is the registered combination.
+static int matchesHotkey(XKeyEvent *ev, int keycode, unsigned int mods) {
+  return ev->keycode == (unsigned int)keycode &&
+         (ev->state & HOTKEY_MOD_MASK) == (mods & HOTKEY_MOD_MASK);
+}
+
 // waitHotkey delivers key events on display d until a cancel ClientMessage
 // (see sendCancel) breaks the loop out of XNextEvent so an unregister can take
 // effect without waiting for the next keypress. The grab is established once
 // by grabHotkey and held until cleanupConnection.
-void waitHotkey(uintptr_t hkhandle, Display *d) {
+//
+// Only events matching the registered combination are reported: grabHotkey
+// also selects KeyPressMask on the root window, so keys that belong to other
+// applications reach this loop as well -- among them the ones the server
+// routes or replays around another client's keyboard grab. Reporting those
+// fired the hotkey on foreign shortcuts, and reporting every key of the
+// combination fired it once per keystroke instead of once. Releases match
+// while the modifiers are still held, which is what the keyup channel needs.
+void waitHotkey(uintptr_t hkhandle, Display *d, int keycode,
+                unsigned int mods) {
   XEvent ev;
   while (1) {
     XNextEvent(d, &ev);
     switch (ev.type) {
     case KeyPress:
-      hotkeyDown(hkhandle);
+      if (matchesHotkey(&ev.xkey, keycode, mods)) {
+        hotkeyDown(hkhandle);
+      }
       continue;
     case KeyRelease:
-      hotkeyUp(hkhandle);
+      if (matchesHotkey(&ev.xkey, keycode, mods)) {
+        hotkeyUp(hkhandle);
+      }
       continue;
     case ClientMessage:
       return;
