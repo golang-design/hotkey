@@ -16,7 +16,6 @@ package hotkey
 #include <stdint.h>
 #include <X11/Xlib.h>
 
-int displayTest();
 Display *openDisplay();
 Window createInvisWindow(Display *d);
 void sendCancel(Display *d, Window window);
@@ -33,28 +32,18 @@ import (
 	"sync"
 )
 
-const errmsg = `Failed to initialize the X11 display, and the clipboard package
-will not work properly. Install the following dependency may help:
-
-	apt install -y libx11-dev
-If the clipboard package is in an environment without a frame buffer,
-such as a cloud server, it may also be necessary to install xvfb:
-	apt install -y xvfb
-and initialize a virtual frame buffer:
-	Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-	export DISPLAY=:99.0
-Then this package should be ready to use.
-`
-
 func init() {
 	// The X11 display is touched from multiple threads (register opens it and
 	// grabs, the per-hotkey event loop blocks in XNextEvent, and unregister
 	// sends the cancel event), so Xlib must be made thread-safe before the
 	// first Xlib call.
+	//
+	// Whether there is a display to talk to is left to register, which
+	// reports it as an error. Checking here panicked every program that
+	// linked this package wherever DISPLAY was unset — on a server, over
+	// SSH, under Wayland without XWayland — even on runs that never
+	// registered a hotkey (#50).
 	C.XInitThreads()
-	if C.displayTest() != 0 {
-		panic(errmsg)
-	}
 }
 
 type platformHotkey struct {
@@ -66,6 +55,10 @@ type platformHotkey struct {
 	display    *C.Display
 	window     C.Window
 }
+
+// errNoDisplay is what register reports without an X server to talk to.
+var errNoDisplay = errors.New("hotkey: cannot open the X11 display; is DISPLAY set? " +
+	"Under Wayland, global hotkeys need XWayland")
 
 // grabMu serializes the grab in register across hotkeys, because the C side
 // uses a process-global error slot and swaps the process-global X error
@@ -93,7 +86,7 @@ func (hk *Hotkey) register() error {
 
 	display := C.openDisplay()
 	if display == nil {
-		return errors.New("hotkey: failed to open the X11 display")
+		return errNoDisplay
 	}
 	window := C.createInvisWindow(display)
 

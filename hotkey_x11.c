@@ -14,19 +14,6 @@
 extern void hotkeyDown(uintptr_t hkhandle);
 extern void hotkeyUp(uintptr_t hkhandle);
 
-int displayTest() {
-  Display *d = NULL;
-  for (int i = 0; i < 42; i++) {
-    d = XOpenDisplay(0);
-    if (d == NULL)
-      continue;
-    break;
-  }
-  if (d == NULL) {
-    return -1;
-  }
-  return 0;
-}
 
 // FIXME: handle bad access properly.
 // int handleErrors( Display* dpy, XErrorEvent* pErr )
